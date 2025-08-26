@@ -3,3 +3,4 @@ config-templates/
 .DS_Store
 *.DS_Store*
 secret*.*
+tasks/*.*

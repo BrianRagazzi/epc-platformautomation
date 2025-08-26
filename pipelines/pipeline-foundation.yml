@@ -1,0 +1,886 @@
+---
+# YAML anchors
+s3_credentials: &s3_credentials
+  access_key_id: ((s3_access_key_id))
+  secret_access_key: ((s3_secret_access_key))
+  endpoint: ((s3_endpoint))
+  region_name: ((s3_region_name))
+  skip_ssl_verification: true
+  use_path_style: true
+
+http_resource: &http_resource
+  type: http-resource
+  source:
+    insecure: true
+
+upload_task: &upload_task
+  image: platform-automation-vsphere-image
+  file: platform-automation-tasks/tasks/upload-product.yml
+  params:
+    ENV_FILE: body
+
+stage_task: &stage_task
+  image: platform-automation-vsphere-image
+  file: platform-automation-tasks/tasks/stage-product.yml
+  params:
+    ENV_FILE: body
+
+configure_task: &configure_task
+  image: platform-automation-vsphere-image
+  file: platform-automation-tasks/tasks/configure-product.yml
+  params:
+    CONFIG_FILE: body
+    ENV_FILE: body
+
+resource_types:
+- name: http-resource
+  type: docker-image
+  source:
+    repository: jgriff/http-resource
+
+resources:
+# S3 Resources
+- name: platform-automation-tasks
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: platform-automation-tasks-(.*).zip
+
+- name: platform-automation-vsphere-image
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: vsphere-platform-automation-image-(.*).tar.gz
+
+- name: platform-automation-custom-image
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: platauto-uaac-(.*).tar.gz
+
+- name: stemcell
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: stemcells
+    regexp: bosh-stemcell-(.*)-vsphere.esxi-ubuntu-jammy-go_agent.tgz
+
+- name: opsman-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: opsmgr
+    regexp: ops-manager-vsphere-(.*).ova
+
+- name: srt-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: tiles
+    regexp: srt-(.*).pivotal
+
+- name: genai-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: tiles
+    regexp: genai-(.*).pivotal
+
+- name: postgres-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: tiles
+    regexp: postgres-(.*).pivotal
+
+- name: hub-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: tiles
+    regexp: tanzu-hub-(\d.*).pivotal
+
+- name: hub-collector-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: tiles
+    regexp: hub-tas-collector-(\d.*).pivotal
+
+# HTTP Resources
+- name: env
+  <<: *http_resource
+  source:
+    url: ((http_config_env))
+
+- name: emptystate
+  <<: *http_resource
+  source:
+    url: ((http_config_emptystate))
+
+- name: config-opsman
+  <<: *http_resource
+  source:
+    url: ((http_config_opsman))
+
+- name: config-director
+  <<: *http_resource
+  source:
+    url: ((http_config_director))
+
+- name: config-director-auth
+  <<: *http_resource
+  source:
+    url: ((http_config_director_auth))
+
+- name: config-genai
+  <<: *http_resource
+  source:
+    url: ((http_config_genai))
+
+- name: config-postgres
+  <<: *http_resource
+  source:
+    url: ((http_config_postgres))
+
+- name: config-srt
+  <<: *http_resource
+  source:
+    url: ((http_config_srt))
+
+- name: config-hub
+  <<: *http_resource
+  source:
+    url: ((http_config_hub))
+
+- name: config-hub-collector
+  <<: *http_resource
+  source:
+    url: ((http_config_hub_collector))
+
+groups:
+- name: foundation-core
+  jobs:
+  - start-core
+  - install-opsman
+- name: foundation-tiles
+  jobs:
+  - start-cf
+  - cf-small-footprint
+  - postgres
+  - apply-changes-phase-one
+  - post-install-tasks-cf
+- name: genai
+  jobs:
+  - start-genai
+  - genai
+  - apply-changes-genai
+- name: hub
+  jobs:
+  - start-hub
+  - hub
+  - hub-collector
+  - apply-changes-hub
+  - add-hub-collector-clients
+- name: teardown
+  jobs:
+  - destroy-installation
+
+jobs:
+- name: start-core
+  plan:
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: env
+  - task: validate-config
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "Starting Foundation Core deployment phase"
+
+- name: install-opsman
+  serial: true
+  serial_groups: [ core ]
+  build_log_retention:
+    builds: 2
+  plan:
+  - get: opsman-product
+  - get: config-opsman
+  - get: config-director
+  - get: config-director-auth
+  - get: emptystate
+  - get: stemcell
+  - get: env
+    passed: [ start-core ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: create-vm
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/create-vm.yml
+    input_mapping:
+      state: emptystate
+      config: config-opsman
+      image: opsman-product
+    params:
+      STATE_FILE: state.yml
+      OPSMAN_CONFIG_FILE: body #((foundation))/config/opsman.yml #prepends config/
+      #VARS_FILES: |
+      #  vars/((foundation))/vars/opsman-defaults.yml vars/((foundation))/vars/opsman-vars.yml
+
+  - task: configure-authentication
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/configure-authentication.yml
+    attempts: 20
+    timeout: 15m
+    input_mapping:
+      env: env
+      config: config-director-auth
+    params:
+      ENV_FILE: body
+      AUTH_CONFIG_FILE: body
+
+  - task: configure-director
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/configure-director.yml
+    input_mapping:
+      config: config-director
+      env: env
+    params:
+      ENV_FILE: body
+      DIRECTOR_CONFIG_FILE: body #relative to config
+      #VARS_FILES: vars/((foundation))/vars/director-defaults.yml vars/((foundation))/vars/director-vars.yml
+
+  - task: apply-director-changes
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/apply-director-changes.yml
+    input_mapping:
+      env: env
+    params:
+      ENV_FILE: body
+
+- name: start-cf
+  plan:
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: env
+    passed: [ install-opsman ]
+  - task: validate-config
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "Starting CF and Postgres deployment phase"
+
+- name: cf-small-footprint
+  serial_groups: [ phase_one ]
+  build_log_retention:
+    builds: 2
+  plan:
+  - get: env
+    passed: [ start-cf ]
+    trigger: true
+  - get: config-srt
+  - get: srt-product
+    #trigger: true
+  - get: stemcell
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: srt-product
+      config: config-srt
+      env: env
+
+  - task: stage-product
+    <<: *stage_task
+    input_mapping:
+      product: srt-product
+      env: env
+
+  - task: upload-stemcell
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/upload-stemcell.yml
+    input_mapping:
+      env: env
+      stemcell: stemcell
+    params:
+      ENV_FILE: body
+
+  - task: create-certificate-vars
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      params:
+        DOMAINS: ((certificate_domains))
+        ENV_FILE: body
+      outputs:
+      - name: vars
+      run:
+        path: sh
+        args:
+        - -c
+        - |
+          echo "generating cert for ${DOMAINS}"
+          om --env env/body generate-certificate -d "${DOMAINS}" > /tmp/certificate.json
+          om interpolate -c /tmp/certificate.json --path /certificate > /tmp/wildcard-cert.pem
+          om interpolate -c /tmp/certificate.json --path /key > /tmp/wildcard-key.pem
+          echo "wildcard-cert-pem: |" > vars/certificate-vars.yml
+          sed 's/^/  /' /tmp/wildcard-cert.pem >> vars/certificate-vars.yml
+          echo "wildcard-key-pem: |" >> vars/certificate-vars.yml
+          sed 's/^/  /' /tmp/wildcard-key.pem >> vars/certificate-vars.yml
+
+  - task: configure-product
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/configure-product.yml
+    params:
+      CONFIG_FILE: body
+      ENV_FILE: body
+      VARS_FILES: vars/certificate-vars.yml
+    input_mapping:
+      config: config-srt
+      env: env
+      vars: vars
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: srt-product
+      - name: stemcell
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf srt-product/*
+          rm -rf stemcell/*
+
+- name: postgres
+  serial: false
+  serial_groups: [ phase_one ]
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: postgres-product
+  - get: config-postgres
+  - get: env
+    passed: [ start-cf ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: postgres-product
+      config: config-postgres
+      env: env
+
+  - task: stage-product
+    <<: *stage_task
+    input_mapping:
+      product: postgres-product
+      env: env
+
+  - task: configure-product
+    <<: *configure_task
+    input_mapping:
+      config: config-postgres
+      env: env
+      #vars: interpolated-creds
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: postgres-product
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf postgres-product/*
+
+- name: apply-changes-phase-one
+  serial: true
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: env
+    passed: [ cf-small-footprint, postgres ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: apply-product-changes
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/apply-changes.yml
+    input_mapping:
+      env: env
+    params:
+      ENV_FILE: body
+      SELECTIVE_DEPLOY_PRODUCTS: "cf,postgres"
+
+- name: post-install-tasks-cf
+  plan:
+  - get: env
+    passed: [ apply-changes-phase-one ]
+    trigger: true
+  - get: platform-automation-custom-image
+    params:
+      unpack: true
+
+  - task: add-ldap-users-to-new-org
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      params:
+        LDAPUSER: ((ldap_user))
+        NEWORG: ((new_org))
+        ENV_FILE: body
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          CF_GUID=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/deployed/products" | \
+            jq -r '.[] | .installation_name' | grep cf- | tail -1)
+          echo "CF GUID: $CF_GUID"
+          SYS_DOMAIN=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/staged/products/${CF_GUID}/properties" | \
+            jq --raw-output '.[] | .[".cloud_controller.system_domain"].value')
+          echo "System Domain: $SYS_DOMAIN"
+          ADMIN_PW=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/deployed/products/${CF_GUID}/credentials/.uaa.admin_credentials" | \
+            jq -r '.[] | .value.password')
+
+          ADMIN_CLIENT=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/deployed/products/${CF_GUID}/credentials/.uaa.admin_client_credentials" | \
+            jq -r '.[] | .value.password')
+          echo "logging in as admin"
+          cf login -a https://api.$SYS_DOMAIN -u admin -p $ADMIN_PW --skip-ssl-validation -o system -s system
+
+          cf create-org $NEWORG
+
+          #cf create-user $LDAPUSER $PAS_ADMIN_PASSWORD
+          cf create-user $LDAPUSER --origin ldap
+          cf set-org-role $LDAPUSER $NEWORG OrgManager
+          cf set-org-role $LDAPUSER $NEWORG BillingManager
+          cf set-org-role $LDAPUSER $NEWORG OrgAuditor
+
+          cf logout
+
+- name: start-genai
+  plan:
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: env
+    passed: [ apply-changes-phase-one ]
+  - task: validate-config
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "Starting GenAI deployment phase"
+
+- name: genai
+  serial: false
+  serial_groups: [ phase_two ]
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: genai-product
+  - get: config-genai
+  - get: env
+    passed: [ start-genai ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: genai-product
+      config: config-genai
+      env: env
+
+  - task: stage-product
+    <<: *stage_task
+    input_mapping:
+      product: genai-product
+      env: env
+
+  - task: configure-product
+    <<: *configure_task
+    input_mapping:
+      config: config-genai
+      env: env
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: genai-product
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf genai-product/*
+
+- name: apply-changes-genai
+  serial: true
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: env
+    passed: [ genai ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: apply-product-changes
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/apply-changes.yml
+    input_mapping:
+      env: env
+    params:
+      ENV_FILE: body
+      SELECTIVE_DEPLOY_PRODUCTS: "genai"
+
+- name: start-hub
+  plan:
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: env
+    passed: [ apply-changes-phase-one ]
+  - task: validate-config
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "Starting Hub deployment phase"
+
+- name: hub
+  serial_groups: [ hub ]
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: env
+    passed: [ start-hub ]
+    trigger: true
+  - get: config-hub
+  - get: hub-product
+  - get: stemcell
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: hub-product
+      config: config-hub
+      env: env
+
+  - task: stage-product
+    <<: *stage_task
+    input_mapping:
+      product: hub-product
+      env: env
+
+  - task: upload-stemcell
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/upload-stemcell.yml
+    input_mapping:
+      env: env
+      stemcell: stemcell
+    params:
+      ENV_FILE: body
+
+  - task: configure-product
+    <<: *configure_task
+    input_mapping:
+      config: config-hub
+      env: env
+      vars: config-hub
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: hub-product
+      - name: stemcell
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf hub-product/*
+          rm -rf stemcell/*
+
+- name: hub-collector
+  serial_groups: [ hub ]
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: env
+    passed: [ start-hub ]
+    trigger: true
+  - get: config-hub-collector
+  - get: hub-collector-product
+  - get: stemcell
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: hub-collector-product
+      config: config-hub-collector
+      env: env
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: hub-collector-product
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf hub-collector-product/*
+
+- name: apply-changes-hub
+  serial: true
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: env
+    passed: [ hub, hub-collector ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: apply-product-changes
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/apply-changes.yml
+    input_mapping:
+      env: env
+    params:
+      ENV_FILE: body
+      SELECTIVE_DEPLOY_PRODUCTS: "hub"
+
+- name: add-hub-collector-clients
+  plan:
+  - get: env
+    passed: [ apply-changes-hub ]
+    trigger: true
+  - get: platform-automation-custom-image
+    params:
+      unpack: true
+  - task: add-opsman-hub-collector #repeat for Director
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      params:
+        HUB_CLIENT_NAME: ((hub_client_name))
+        HUB_CLIENT_PASSWORD: ((hub_client_password))
+        ENV_FILE: body
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eux
+          gem install cf-uaac 
+          # get opsman url:
+          #OPSMAN_URL=$(grep "^target:" env/body | cut -d"'" -f2)
+          OPSMAN_URL=$(grep "^target:" env/"${ENV_FILE}" | sed "s/^target: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
+          #OPSMAN_USER=$(grep "^username:" env/"${ENV_FILE}"| cut -d"'" -f2)
+          OPSMAN_USER=$(grep "^username:" env/"${ENV_FILE}" | sed "s/^username: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
+          #OPSMAN_PASS=$(grep "^password:" env/"${ENV_FILE}" | cut -d"'" -f2)
+          OPSMAN_PASS=$(grep "^password:" env/"${ENV_FILE}" | sed "s/^password: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
+          # Set uaa target to opsman/uaa --skip-ssl-validation
+          echo "setting Opsman UAA Target"
+          uaac target https://$OPSMAN_URL/uaa --skip-ssl-validation
+          uaac token owner get opsman "$OPSMAN_USER" -p "$OPSMAN_PASS" -s ""
+
+          echo "checking uaac clients for $HUB_CLIENT_NAME"
+          client_exists=$(uaac clients | grep $HUB_CLIENT_NAME || true)
+          if [ -n "$client_exists" ]; then
+            echo "Client $HUB_CLIENT_NAME already exists.  Updating secret"
+            uaac secret set "$HUB_CLIENT_NAME" -s "$HUB_CLIENT_PASSWORD"
+          else
+            echo "Creating new client $HUB_CLIENT_NAME"
+            uaac client add $HUB_CLIENT_NAME --secret "$HUB_CLIENT_PASSWORD" --authorized_grant_types client_credentials,refresh_token --authorities scim.read
+          fi
+          echo "listing OpsMan UAA Clients to verify"
+          uaac clients | grep -A 5 -B 5 "$HUB_CLIENT_NAME" || echo "[WARN] Client not found in Opsman UAA listing"
+
+  - task: add-director-hub-collector
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      params:
+        HUB_CLIENT_NAME: ((hub_client_name))
+        HUB_CLIENT_PASSWORD: ((hub_client_password))
+        ENV_FILE: body
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          gem install cf-uaac 
+          #OPSMAN_URL=$(grep "^target:" env/body | cut -d"'" -f2)
+          OPSMAN_URL=$(grep "^target:" env/"${ENV_FILE}" | sed "s/^target: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
+          #OPSMAN_USER=$(grep "^username:" env/"${ENV_FILE}"| cut -d"'" -f2)
+          OPSMAN_USER=$(grep "^username:" env/"${ENV_FILE}" | sed "s/^username: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
+          #OPSMAN_PASS=$(grep "^password:" env/"${ENV_FILE}" | cut -d"'" -f2)
+          OPSMAN_PASS=$(grep "^password:" env/"${ENV_FILE}" | sed "s/^password: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
+
+          # get BOSH creds from opsman via curl
+          BOSH_CREDS=$(om --env env/"${ENV_FILE}" curl --silent --path /api/v0/deployed/director/credentials/bosh_commandline_credentials  | jq -r '.credential')
+          UAA_CLIENT_ID=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CLIENT=[^ ]*' | cut -d'=' -f2)
+          # Parse BOSH_CLIENT_SECRET
+          UAA_CLIENT_SECRET=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CLIENT_SECRET=[^ ]*' | cut -d'=' -f2)
+          # Parse BOSH_ENVIRONMENT (Director IP)
+          BOSH_DIRECTOR_IP=$(echo "$BOSH_CREDS" | grep -o 'BOSH_ENVIRONMENT=[^ ]*' | cut -d'=' -f2)
+          echo "BOSH Director IP: $BOSH_DIRECTOR_IP"
+          # set uaac target to bosh director:8443 --skip-ssl-validation
+          uaac target https://$BOSH_DIRECTOR_IP:8443 --skip-ssl-validation
+          uaac token client get $UAA_CLIENT_ID --secret $UAA_CLIENT_SECRET
+
+          # check for client, create if it doesn't exists.
+          client_exists=$(uaac clients | grep $HUB_CLIENT_NAME || true)
+          if [ -n "$client_exists" ]; then
+            echo "Client $HUB_CLIENT_NAME already exists.  Updating secret"
+            uaac secret set "$HUB_CLIENT_NAME" -s "$HUB_CLIENT_PASSWORD"
+          else
+            echo "Creating new client $HUB_CLIENT_NAME"
+            uaac client add $HUB_CLIENT_NAME --secret "$HUB_CLIENT_PASSWORD" --authorized_grant_types client_credentials,refresh_token --authorities bosh.read --scope bosh.read
+          fi
+          echo "listing BOSH Director UAA Clients to verify"
+          uaac clients | grep -A 5 -B 5 "$HUB_CLIENT_NAME" || echo "[WARN] Client not found in BOSH UAA listing"
+
+- name: destroy-installation
+  serial: true
+  serial_groups: [ teardown ]
+  plan:
+  - get: env
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: delete-installation
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/delete-installation.yml
+    input_mapping:
+      env: env
+    params:
+      ENV_FILE: body
+  # - task: delete-opsman-vm
+  #   image: platform-automation-vsphere-image
+  #   file: platform-automation-tasks/tasks/delete-vm.yml
+  #   input_mapping:
+  #     state: state
+  #     config: config
+  #     vars: interpolated-creds
+  #     env: interpolated-creds
+  #   params:
+  #     STATE_FILE: ((foundation))/state/state.yml
+  #     OPSMAN_CONFIG_FILE: ((foundation))/config/opsman.yml
+  #     VARS_FILES: |
+  #       vars/((foundation))/vars/opsman-defaults.yml
+  #       vars/((foundation))/vars/opsman-vars.yml

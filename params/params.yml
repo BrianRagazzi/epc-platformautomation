@@ -1,0 +1,30 @@
+s3_access_key_id: accesskey
+s3_secret_access_key: secret
+s3_endpoint: minio.local
+s3_region_name: us-east1
+
+s3_access_key_id: s3-access-key
+s3_secret_access_key: s3-secret
+s3_endpoint: https://minio.mydomain
+s3_region_name: us-east1
+
+certificate_domains: "*.sys.mydomain.com,*.apps.mydomain.com,*.login.sys.mydomain.com,*.uaa.sys.mydomain.com"
+
+http_config_env: https://fileshare.mydomain.com/config/env/env.yml
+http_config_genai: https://fileshare.mydomain.com/config/genai/genai.yml
+http_config_postgres: https://fileshare.mydomain.com/config/postgres/postgres.yml
+http_config_srt: https://fileshare.mydomain.com/config/srt/srt.yml
+http_config_hub: https://fileshare.mydomain.com/config/hub/hub.yml
+http_config_hub_collector: https://fileshare.mydomain.com/config/hub-tas-collector/hub-tas-collector.yml
+http_config_opsman: https://fileshare.mydomain.com/config/opsman/opsman.yml
+http_config_director: https://fileshare.mydomain.com/config/director/director.yml
+http_config_director_auth: https://fileshare.mydomain.com/config/director/auth.yml
+http_config_emptystate: https://fileshare.mydomain.com/config/state/state-empty.yml
+http_config_state: https://fileshare.mydomain.com/config/state/state.yml
+
+ldap_user: platformadmin@mydomain.com
+new_org: platform
+ldap_admin_group_dn: "CN=Platform Admins,CN=Users,DC=mydomain,DC=com"
+
+hub_client_name: hub-tas-collector
+hub_client_password: hub-tas-collector

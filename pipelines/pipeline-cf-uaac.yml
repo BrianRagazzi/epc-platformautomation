@@ -1,0 +1,211 @@
+---
+# YAML anchors
+s3_credentials: &s3_credentials
+  access_key_id: ((s3_access_key_id))
+  secret_access_key: ((s3_secret_access_key))
+  endpoint: ((s3_endpoint))
+  region_name: ((s3_region_name))
+  skip_ssl_verification: true
+  use_path_style: true
+
+http_resource: &http_resource
+  type: http-resource
+  source:
+    insecure: true
+
+resource_types:
+- name: http-resource
+  type: docker-image
+  source:
+    repository: jgriff/http-resource
+
+resources:
+
+- name: platform-automation-custom-image
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: platauto-uaac-(.*).tar.gz
+
+- name: env
+  <<: *http_resource
+  source:
+    url: ((http_config_env))
+
+jobs:
+- name: post-install-tasks-cf
+  plan:
+  - get: env
+  - get: platform-automation-custom-image
+    params:
+      unpack: true
+  - task: add-ldap-users-to-new-org
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      params:
+        LDAPUSER: ((ldap_user))
+        NEWORG: ((new_org))
+        ENV_FILE: body
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          CF_GUID=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/deployed/products" | \
+            jq -r '.[] | .installation_name' | grep cf- | tail -1)
+          echo "CF GUID: $CF_GUID"
+          SYS_DOMAIN=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/staged/products/${CF_GUID}/properties" | \
+            jq --raw-output '.[] | .[".cloud_controller.system_domain"].value')
+          echo "System Domain: $SYS_DOMAIN"
+          ADMIN_PW=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/deployed/products/${CF_GUID}/credentials/.uaa.admin_credentials" | \
+            jq -r '.[] | .value.password')
+
+          ADMIN_CLIENT=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/deployed/products/${CF_GUID}/credentials/.uaa.admin_client_credentials" | \
+            jq -r '.[] | .value.password')
+          echo "logging in as admin"
+          cf login -a https://api.$SYS_DOMAIN -u admin -p $ADMIN_PW --skip-ssl-validation -o system -s system
+
+          cf create-org $NEWORG
+
+          #cf create-user $LDAPUSER $PAS_ADMIN_PASSWORD
+          cf create-user $LDAPUSER --origin ldap
+          cf set-org-role $LDAPUSER $NEWORG OrgManager
+          cf set-org-role $LDAPUSER $NEWORG BillingManager
+          cf set-org-role $LDAPUSER $NEWORG OrgAuditor
+
+          cf logout
+
+  - task: add-ldap-group-pas-admin
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      params:
+        GROUP_DISTINGUISHED_NAME: ((ldap_admin_group_dn))
+        ENV_FILE: body
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          CF_GUID=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/deployed/products" | \
+            jq -r '.[] | .installation_name' | grep cf- | tail -1)
+          echo "CF GUID: $CF_GUID"
+          SYS_DOMAIN=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/staged/products/${CF_GUID}/properties" | \
+            jq --raw-output '.[] | .[".cloud_controller.system_domain"].value')
+          echo "System Domain: $SYS_DOMAIN"
+          ADMIN_PW=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/deployed/products/${CF_GUID}/credentials/.uaa.admin_credentials" | \
+            jq -r '.[] | .value.password')
+
+          ADMIN_CLIENT_PASSWORD=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/deployed/products/${CF_GUID}/credentials/.uaa.admin_client_credentials" | \
+            jq -r '.[] | .value.password')
+          echo "logging in as admin"
+          echo "Connecting to PAS UAA server [uaa.$SYS_DOMAIN]..."
+          # login to PAS UAA
+          # export PATH="/rootfs/var/lib/gems/3.0.0/bin:${PATH}"
+          gem install cf-uaac 
+          uaac target https://uaa.$SYS_DOMAIN --skip-ssl-validation
+          uaac token client get admin --secret $ADMIN_CLIENT_PASSWORD
+
+          uaac group map --name uaa.admin "$GROUP_DISTINGUISHED_NAME"
+          uaac group map --name cloud_controller.admin "$GROUP_DISTINGUISHED_NAME"
+          uaac group map --name scim.read "$GROUP_DISTINGUISHED_NAME"
+          uaac group map --name scim.write "$GROUP_DISTINGUISHED_NAME"
+
+  - task: add-opsman-hub-collector #repeat for Director
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      params:
+        HUB_CLIENT_NAME: ((hub_client_name))
+        HUB_CLIENT_PASSWORD: ((hub_client_password))
+        ENV_FILE: body
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          gem install cf-uaac 
+          # get opsman url:
+          OPSMAN_URL=$(grep "^target:" env/body | cut -d"'" -f2)
+          OPSMAN_USER=$(grep "^username:" env/body | cut -d"'" -f2)
+          OPSMAN_PASS=$(grep "^password:" env/body | cut -d"'" -f2)
+          # Set uaa target to opsman/uaa --skip-ssl-validation
+          echo "setting Opsman UAA Target"
+          uaac target $OPSMAN_URL/uaa --skip-ssl-validation
+          uaac token owner get opsman "$OPSMAN_USER" -p "$OPSMAN_PASS" -s ""
+
+          echo "checking uaac clients for $HUB_CLIENT_NAME"
+          client_exists=$(uaac clients | grep $HUB_CLIENT_NAME || true)
+          if [ -n "$client_exists" ]; then
+            echo "Client $HUB_CLIENT_NAME already exists.  Updating secret"
+            uaac secret set "$HUB_CLIENT_NAME" -s "$HUB_CLIENT_PASSWORD"
+          else
+            echo "Creating new client $HUB_CLIENT_NAME"
+            uaac client add $HUB_CLIENT_NAME --secret "$HUB_CLIENT_PASSWORD" --authorized_grant_types client_credentials,refresh_token --authorities scim.read
+          fi
+          echo "listing OpsMan UAA Clients to verify"
+          uaac clients | grep -A 5 -B 5 "$HUB_CLIENT_NAME" || echo "[WARN] Client not found in Opsman UAA listing"
+
+  - task: add-director-hub-collector
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      params:
+        HUB_CLIENT_NAME: ((hub_client_name))
+        HUB_CLIENT_PASSWORD: ((hub_client_password))
+        ENV_FILE: body
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          gem install cf-uaac 
+          OPSMAN_URL=$(grep "^target:" env/body | cut -d"'" -f2)
+          OPSMAN_USER=$(grep "^username:" env/body | cut -d"'" -f2)
+          OPSMAN_PASS=$(grep "^password:" env/body | cut -d"'" -f2)
+
+          # get BOSH creds from opsman via curl
+          BOSH_CREDS=$(om --env env/"${ENV_FILE}" curl --silent --path /api/v0/deployed/director/credentials/bosh_commandline_credentials  | jq -r '.credential')
+          UAA_CLIENT_ID=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CLIENT=[^ ]*' | cut -d'=' -f2)
+          # Parse BOSH_CLIENT_SECRET
+          UAA_CLIENT_SECRET=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CLIENT_SECRET=[^ ]*' | cut -d'=' -f2)
+          # Parse BOSH_ENVIRONMENT (Director IP)
+          BOSH_DIRECTOR_IP=$(echo "$BOSH_CREDS" | grep -o 'BOSH_ENVIRONMENT=[^ ]*' | cut -d'=' -f2)
+          echo "BOSH Director IP: $BOSH_DIRECTOR_IP"
+          # set uaac target to bosh director:8443 --skip-ssl-validation
+          uaac target https://$BOSH_DIRECTOR_IP:8443 --skip-ssl-validation
+          uaac token client get $UAA_CLIENT_ID --secret $UAA_CLIENT_SECRET
+
+          # check for client, create if it doesn't exists.
+          client_exists=$(uaac clients | grep $HUB_CLIENT_NAME || true)
+          if [ -n "$client_exists" ]; then
+            echo "Client $HUB_CLIENT_NAME already exists.  Updating secret"
+            uaac secret set "$HUB_CLIENT_NAME" -s "$HUB_CLIENT_PASSWORD"
+          else
+            echo "Creating new client $HUB_CLIENT_NAME"
+            uaac client add $HUB_CLIENT_NAME --secret "$HUB_CLIENT_PASSWORD" --authorized_grant_types client_credentials,refresh_token --authorities bosh.read --scope bosh.read
+          fi
+          echo "listing BOSH Director UAA Clients to verify"
+          uaac clients | grep -A 5 -B 5 "$HUB_CLIENT_NAME" || echo "[WARN] Client not found in BOSH UAA listing"
