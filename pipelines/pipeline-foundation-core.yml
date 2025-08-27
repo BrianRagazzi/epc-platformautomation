@@ -1,0 +1,219 @@
+---
+# YAML anchors
+s3_credentials: &s3_credentials
+  access_key_id: ((s3_access_key_id))
+  secret_access_key: ((s3_secret_access_key))
+  endpoint: ((s3_endpoint))
+  region_name: ((s3_region_name))
+  skip_ssl_verification: true
+  use_path_style: true
+
+http_resource: &http_resource
+  type: http-resource
+  source:
+    insecure: true
+
+upload_task: &upload_task
+  image: platform-automation-vsphere-image
+  file: platform-automation-tasks/tasks/upload-product.yml
+  params:
+    ENV_FILE: body
+
+stage_task: &stage_task
+  image: platform-automation-vsphere-image
+  file: platform-automation-tasks/tasks/stage-product.yml
+  params:
+    ENV_FILE: body
+
+configure_task: &configure_task
+  image: platform-automation-vsphere-image
+  file: platform-automation-tasks/tasks/configure-product.yml
+  params:
+    CONFIG_FILE: body
+    ENV_FILE: body
+
+resource_types:
+- name: http-resource
+  type: docker-image
+  source:
+    repository: jgriff/http-resource
+
+resources:
+# S3 Resources
+- name: platform-automation-tasks
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: platform-automation-tasks-(.*).zip
+
+- name: platform-automation-vsphere-image
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: vsphere-platform-automation-image-(.*).tar.gz
+
+- name: stemcell
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: stemcells
+    regexp: bosh-stemcell-(.*)-vsphere.esxi-ubuntu-jammy-go_agent.tgz
+
+- name: opsman-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: opsmgr
+    regexp: ops-manager-vsphere-(.*).ova
+
+# HTTP Resources
+- name: env
+  <<: *http_resource
+  source:
+    url: ((http_config_env))
+
+- name: emptystate
+  <<: *http_resource
+  source:
+    url: ((http_config_emptystate))
+
+- name: config-opsman
+  <<: *http_resource
+  source:
+    url: ((http_config_opsman))
+
+- name: config-director
+  <<: *http_resource
+  source:
+    url: ((http_config_director))
+
+- name: config-director-auth
+  <<: *http_resource
+  source:
+    url: ((http_config_director_auth))
+
+jobs:
+- name: start-core
+  plan:
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: env
+  - task: validate-config
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "Starting Foundation Core deployment phase"
+
+- name: install-opsman
+  serial: true
+  serial_groups: [ core ]
+  build_log_retention:
+    builds: 2
+  plan:
+  - get: opsman-product
+  - get: config-opsman
+  - get: config-director
+  - get: config-director-auth
+  - get: emptystate
+  - get: stemcell
+  - get: env
+    passed: [ start-core ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: create-vm
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/create-vm.yml
+    input_mapping:
+      state: emptystate
+      config: config-opsman
+      image: opsman-product
+    params:
+      STATE_FILE: state.yml
+      OPSMAN_CONFIG_FILE: body #((foundation))/config/opsman.yml #prepends config/
+      #VARS_FILES: |
+      #  vars/((foundation))/vars/opsman-defaults.yml vars/((foundation))/vars/opsman-vars.yml
+
+  - task: configure-authentication
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/configure-authentication.yml
+    attempts: 20
+    timeout: 15m
+    input_mapping:
+      env: env
+      config: config-director-auth
+    params:
+      ENV_FILE: body
+      AUTH_CONFIG_FILE: body
+
+  - task: configure-director
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/configure-director.yml
+    input_mapping:
+      config: config-director
+      env: env
+    params:
+      ENV_FILE: body
+      DIRECTOR_CONFIG_FILE: body #relative to config
+      #VARS_FILES: vars/((foundation))/vars/director-defaults.yml vars/((foundation))/vars/director-vars.yml
+
+  - task: upload-stemcell
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/upload-stemcell.yml
+    input_mapping:
+      env: env
+      stemcell: stemcell
+    params:
+      ENV_FILE: body
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: opsman-product
+      - name: stemcell
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf opsman-product/*
+          rm -rf stemcell/*
+
+- name: apply-changes-director
+  build_log_retention:
+    builds: 2
+  plan:
+  - get: env
+    passed: [ install ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: apply-director-changes
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/apply-director-changes.yml
+    input_mapping:
+      env: env
+    params:
+      ENV_FILE: body
