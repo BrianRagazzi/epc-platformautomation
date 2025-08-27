@@ -10,10 +10,10 @@ $pipelineRepo   = "https://github.com/BrianRagazzi/epc-platformautomation.git"
 $concourseURL   = "http://concourse.elasticsky.cloud:8080"
 $concourseUser  = "admin"
 $concoursePass  = "VMware123!"
-$paramsFile     = "secret-params.yml"
+$paramsFile     = "params.yml"
 $concoursePath  = 'C:\concourse\'
 $flyDownloadURL = "$concourseURL/api/v1/cli?arch=amd64&platform=windows"
-$pipelinesPath  = "..\pipelines"
+$pipelinesPath  = ".\pipelines"
 $paramsPath     = ".\params"
 
 ### Global Variables for Script State
@@ -202,9 +202,6 @@ function Connect-ToConcourse {
         
         if ($process.ExitCode -eq 0) {
             Write-Log "Successfully logged into Concourse" -Level "SUCCESS"
-            if ($output) {
-                Write-Log "Login output: $output" -Level "INFO"
-            }
             return $true
         } else {
             Write-Log "Failed to login to Concourse (Exit Code: $($process.ExitCode))" -Level "ERROR"
@@ -313,10 +310,6 @@ function Deploy-Pipelines {
                     Pipeline = $pipelineName
                     Status = "Success"
                     Message = "Deployed successfully"
-                }
-                
-                if ($output) {
-                    Write-Log "Deployment output: $output" -Level "INFO"
                 }
             } else {
                 Write-Log "Failed to deploy pipeline '$pipelineName' (Exit Code: $($process.ExitCode))" -Level "ERROR"
