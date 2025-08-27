@@ -4,3 +4,4 @@ config-templates/
 *.DS_Store*
 secret*.*
 tasks/*.*
+pipelines/testing*.*

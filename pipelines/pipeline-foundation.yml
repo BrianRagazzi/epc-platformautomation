@@ -748,6 +748,7 @@ jobs:
   - task: apply-product-changes
     image: platform-automation-vsphere-image
     file: platform-automation-tasks/tasks/apply-changes.yml
+    attempts: 4
     input_mapping:
       env: env
     params:
