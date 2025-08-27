@@ -201,7 +201,7 @@ jobs:
     builds: 2
   plan:
   - get: env
-    passed: [ install ]
+    passed: [ install-opsman ]
     trigger: true
   - get: platform-automation-vsphere-image
     params:

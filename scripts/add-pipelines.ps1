@@ -13,7 +13,7 @@ $concoursePass  = "VMware123!"
 $paramsFile     = "secret-params.yml"
 $concoursePath  = 'C:\concourse\'
 $flyDownloadURL = "$concourseURL/api/v1/cli?arch=amd64&platform=windows"
-$pipelinesPath  = ".\pipelines"
+$pipelinesPath  = "..\pipelines"
 $paramsPath     = ".\params"
 
 ### Global Variables for Script State
