@@ -21,6 +21,7 @@ http_config_director: https://fileshare.mydomain.com/config/director/director.ym
 http_config_director_auth: https://fileshare.mydomain.com/config/director/auth.yml
 http_config_emptystate: https://fileshare.mydomain.com/config/state/state-empty.yml
 http_config_state: https://fileshare.mydomain.com/config/state/state.yml
+http_opsman_ssh_key: https://fileshare.mydomain.com/config/opsman/private.key
 
 ldap_user: platformadmin@mydomain.com
 new_org: platform
