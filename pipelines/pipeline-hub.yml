@@ -114,7 +114,7 @@ jobs:
     params:
       unpack: true
   - get: env
-    passed: [ apply-changes-phase-one ]
+    #passed: [ apply-changes-phase-one ]
   - task: validate-config
     image: platform-automation-vsphere-image
     config:
