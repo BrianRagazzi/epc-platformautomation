@@ -498,7 +498,7 @@ jobs:
       inputs:
       - name: env
         LDAPUSER: ((ldap_user))
-        NEWORGS: ((new_org))
+        NEWORGS: ((new_orgs))
         NEWSPACES: ((new_spaces))
         ENV_FILE: body
       run:
