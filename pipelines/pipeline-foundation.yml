@@ -36,8 +36,16 @@ resource_types:
 - name: http-resource
   type: docker-image
   source:
-    repository: jgriff/http-resource
+    repository: "harbor.elasticsky.cloud/library/jgriff/http-resource"
+    tag: 'latest'
+    insecure: true
+    insecure_registries: [ "harbor.elasticsky.cloud" ]
 
+# - name: http-resource
+#   type: docker-image
+#   source:
+#     repository: jgriff/http-resource
+#     # this works when provided with a username and password:
 resources:
 # S3 Resources
 - name: platform-automation-tasks
@@ -243,6 +251,17 @@ jobs:
       OPSMAN_CONFIG_FILE: body #((foundation))/config/opsman.yml #prepends config/
       #VARS_FILES: |
       #  vars/((foundation))/vars/opsman-defaults.yml vars/((foundation))/vars/opsman-vars.yml
+
+  - task: wait-a-few
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          sleep 180
 
   - task: configure-authentication
     image: platform-automation-vsphere-image

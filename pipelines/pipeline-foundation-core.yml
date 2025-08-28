@@ -167,7 +167,7 @@ jobs:
         args:
         - -exc
         - |
-          sleep 240
+          sleep 180
 
   - task: configure-authentication
     image: platform-automation-vsphere-image
