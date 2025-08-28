@@ -158,6 +158,17 @@ jobs:
       #VARS_FILES: |
       #  vars/((foundation))/vars/opsman-defaults.yml vars/((foundation))/vars/opsman-vars.yml
 
+  - task: wait-a-few
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          sleep 240
+
   - task: configure-authentication
     image: platform-automation-vsphere-image
     file: platform-automation-tasks/tasks/configure-authentication.yml
