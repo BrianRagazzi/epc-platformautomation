@@ -1,0 +1,349 @@
+---
+# YAML anchors
+s3_credentials: &s3_credentials
+  access_key_id: ((s3_access_key_id))
+  secret_access_key: ((s3_secret_access_key))
+  endpoint: ((s3_endpoint))
+  region_name: ((s3_region_name))
+  skip_ssl_verification: true
+  use_path_style: true
+
+http_resource: &http_resource
+  type: http-resource
+  source:
+    insecure: true
+
+upload_task: &upload_task
+  image: platform-automation-vsphere-image
+  file: platform-automation-tasks/tasks/upload-product.yml
+  params:
+    ENV_FILE: body
+
+stage_task: &stage_task
+  image: platform-automation-vsphere-image
+  file: platform-automation-tasks/tasks/stage-product.yml
+  params:
+    ENV_FILE: body
+
+configure_task: &configure_task
+  image: platform-automation-vsphere-image
+  file: platform-automation-tasks/tasks/configure-product.yml
+  params:
+    CONFIG_FILE: body
+    ENV_FILE: body
+
+resource_types:
+- name: http-resource
+  type: docker-image
+  source:
+    repository: "harbor.elasticsky.cloud/library/jgriff/http-resource"
+    tag: 'latest'
+    insecure: true
+    insecure_registries: [ "harbor.elasticsky.cloud" ]
+
+# - name: http-resource
+#   type: docker-image
+#   source:
+#     repository: jgriff/http-resource
+#     # this works when provided with a username and password:
+
+resources:
+# S3 Resources
+- name: platform-automation-tasks
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: platform-automation-tasks-(.*).zip
+
+- name: platform-automation-vsphere-image
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: vsphere-platform-automation-image-(.*).tar.gz
+
+- name: platform-automation-custom-image
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: platauto-uaac-(.*).tar.gz
+
+- name: stemcell
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: stemcells
+    regexp: bosh-stemcell-(.*)-vsphere.esxi-ubuntu-jammy-go_agent.tgz
+
+- name: srt-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: tiles
+    regexp: srt-(.*).pivotal
+
+- name: postgres-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: tiles
+    regexp: postgres-(.*).pivotal
+
+# HTTP Resources
+- name: env
+  <<: *http_resource
+  source:
+    url: ((http_config_env))
+
+- name: config-postgres
+  <<: *http_resource
+  source:
+    url: ((http_config_postgres))
+
+- name: config-srt
+  <<: *http_resource
+  source:
+    url: ((http_config_srt))
+
+jobs:
+- name: start-cf
+  plan:
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: env
+  - task: validate-config
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "Starting CF and Postgres deployment phase"
+
+- name: cf-small-footprint
+  serial_groups: [ phase_one ]
+  build_log_retention:
+    builds: 2
+  plan:
+  - get: env
+    passed: [ start-cf ]
+    trigger: true
+  - get: config-srt
+  - get: srt-product
+    #trigger: true
+  - get: stemcell
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: srt-product
+      config: config-srt
+      env: env
+
+  - task: stage-product
+    <<: *stage_task
+    input_mapping:
+      product: srt-product
+      env: env
+
+  - task: upload-stemcell
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/upload-stemcell.yml
+    input_mapping:
+      env: env
+      stemcell: stemcell
+    params:
+      ENV_FILE: body
+
+  - task: create-certificate-vars
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      params:
+        DOMAINS: ((certificate_domains))
+        ENV_FILE: body
+      outputs:
+      - name: vars
+      run:
+        path: sh
+        args:
+        - -c
+        - |
+          echo "generating cert for ${DOMAINS}"
+          om --env env/body generate-certificate -d "${DOMAINS}" > /tmp/certificate.json
+          om interpolate -c /tmp/certificate.json --path /certificate > /tmp/wildcard-cert.pem
+          om interpolate -c /tmp/certificate.json --path /key > /tmp/wildcard-key.pem
+          echo "wildcard-cert-pem: |" > vars/certificate-vars.yml
+          sed 's/^/  /' /tmp/wildcard-cert.pem >> vars/certificate-vars.yml
+          echo "wildcard-key-pem: |" >> vars/certificate-vars.yml
+          sed 's/^/  /' /tmp/wildcard-key.pem >> vars/certificate-vars.yml
+
+  - task: configure-product
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/configure-product.yml
+    params:
+      CONFIG_FILE: body
+      ENV_FILE: body
+      VARS_FILES: vars/certificate-vars.yml
+    input_mapping:
+      config: config-srt
+      env: env
+      vars: vars
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: srt-product
+      - name: stemcell
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf srt-product/*
+          rm -rf stemcell/*
+
+- name: postgres
+  serial: false
+  serial_groups: [ phase_one ]
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: postgres-product
+  - get: config-postgres
+  - get: env
+    passed: [ start-cf ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: postgres-product
+      config: config-postgres
+      env: env
+
+  - task: stage-product
+    <<: *stage_task
+    input_mapping:
+      product: postgres-product
+      env: env
+
+  - task: configure-product
+    <<: *configure_task
+    input_mapping:
+      config: config-postgres
+      env: env
+      #vars: interpolated-creds
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: postgres-product
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf postgres-product/*
+
+- name: apply-changes-phase-one
+  serial: true
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: env
+    passed: [ cf-small-footprint, postgres ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: apply-product-changes
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/apply-changes.yml
+    input_mapping:
+      env: env
+    params:
+      ENV_FILE: body
+      SELECTIVE_DEPLOY_PRODUCTS: "cf,postgres"
+
+- name: post-install-tasks-cf
+  plan:
+  - get: env
+    passed: [ apply-changes-phase-one ]
+    trigger: true
+  - get: platform-automation-custom-image
+    params:
+      unpack: true
+
+  - task: add-ldap-users-to-new-org
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      params:
+        LDAPUSER: ((ldap_user))
+        NEWORG: ((new_org))
+        ENV_FILE: body
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          CF_GUID=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/deployed/products" | \
+            jq -r '.[] | .installation_name' | grep cf- | tail -1)
+          echo "CF GUID: $CF_GUID"
+          SYS_DOMAIN=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/staged/products/${CF_GUID}/properties" | \
+            jq --raw-output '.[] | .[".cloud_controller.system_domain"].value')
+          echo "System Domain: $SYS_DOMAIN"
+          ADMIN_PW=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/deployed/products/${CF_GUID}/credentials/.uaa.admin_credentials" | \
+            jq -r '.[] | .value.password')
+
+          ADMIN_CLIENT=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/deployed/products/${CF_GUID}/credentials/.uaa.admin_client_credentials" | \
+            jq -r '.[] | .value.password')
+          echo "logging in as admin"
+          cf login -a https://api.$SYS_DOMAIN -u admin -p $ADMIN_PW --skip-ssl-validation -o system -s system
+
+          cf create-org $NEWORG
+
+          #cf create-user $LDAPUSER $PAS_ADMIN_PASSWORD
+          cf create-user $LDAPUSER --origin ldap
+          cf set-org-role $LDAPUSER $NEWORG OrgManager
+          cf set-org-role $LDAPUSER $NEWORG BillingManager
+          cf set-org-role $LDAPUSER $NEWORG OrgAuditor
+
+          cf logout

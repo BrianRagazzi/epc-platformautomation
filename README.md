@@ -18,6 +18,7 @@ Running the script from the root ensures that all relative paths referenced with
 * Document how to make sure concourse is running
 * scripts to update and add pipelines to concourse
 * Diagram of the configuration
+* consider adding pipelines to teams for grouping:  fly -t ci set-team -n end-2-end /local-user:admin /non-interactive
 
 
 ## Pipeline Features:
