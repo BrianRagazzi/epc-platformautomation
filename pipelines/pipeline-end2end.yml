@@ -180,10 +180,9 @@ groups:
   - apply-changes-phase-one
   - post-install-tasks-cf
   - genai
-  - apply-changes-genai
   - hub
   - hub-collector
-  - apply-changes-hub
+  - apply-changes-genai-hub
   - add-hub-collector-clients
 - name: teardown
   jobs:
