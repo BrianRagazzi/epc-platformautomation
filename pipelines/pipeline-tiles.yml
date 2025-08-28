@@ -373,7 +373,8 @@ jobs:
       - name: env
       params:
         LDAPUSER: ((ldap_user))
-        NEWORG: ((new_org))
+        NEWORGS: ((new_org))
+        NEWSPACES: ((new_spaces))
         ENV_FILE: body
       run:
         path: bash

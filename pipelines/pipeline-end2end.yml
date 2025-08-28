@@ -563,7 +563,6 @@ jobs:
               echo "Creating space: $space in org: $org"
               cf create-space "$space" -o "$org"
           done
-
           cf logout
 
 - name: genai
