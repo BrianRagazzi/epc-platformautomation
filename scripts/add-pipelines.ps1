@@ -10,6 +10,7 @@ $pipelineRepo   = "https://github.com/BrianRagazzi/epc-platformautomation.git"
 $concourseURL   = "http://concourse.elasticsky.cloud:8080"
 $concourseUser  = "admin"
 $concoursePass  = "VMware123!"
+$paramsSource   = "https://fileshare.tnz-field-epc.lvn.broadcom.net/config/params.yml"
 $paramsFile     = "params.yml"
 $concoursePath  = 'C:\concourse\'
 $flyDownloadURL = "$concourseURL/api/v1/cli?arch=amd64&platform=windows"
@@ -151,6 +152,53 @@ function Install-FlyCLI {
     }
     catch {
         Write-Log "Error during Fly CLI installation: $($_.Exception.Message)" -Level "ERROR"
+        return $false
+    }
+}
+
+function Get-ParametersFile {
+    <#
+    .SYNOPSIS
+    Downloads the remote parameters file and saves it locally
+    
+    .DESCRIPTION
+    Retrieves the remote file specified in $paramsSource and saves it to $paramsPath\$paramsFile,
+    overwriting any existing files
+    
+    .OUTPUTS
+    Boolean - True if download successful, False otherwise
+    #>
+    
+    Write-Log "Downloading parameters file from remote source..." -Level "INFO"
+    Write-Log "Source: $paramsSource" -Level "INFO"
+    
+    try {
+        # Ensure the params directory exists
+        if (!(Test-Path $paramsPath)) {
+            Write-Log "Creating parameters directory: $paramsPath" -Level "INFO"
+            New-Item -ItemType Directory -Path $paramsPath -Force | Out-Null
+        }
+        
+        $paramsFilePath = Join-Path $paramsPath $paramsFile
+        Write-Log "Target: $paramsFilePath" -Level "INFO"
+        
+        # Download the parameters file
+        Write-Log "Downloading parameters file..." -Level "INFO"
+        Invoke-WebRequest -Uri $paramsSource -OutFile $paramsFilePath -UseBasicParsing
+        
+        # Verify the download
+        if (Test-Path $paramsFilePath) {
+            $fileSize = (Get-Item $paramsFilePath).Length
+            Write-Log "Successfully downloaded parameters file ($fileSize bytes)" -Level "SUCCESS"
+            return $true
+        } else {
+            Write-Log "Parameters file was not created at expected location: $paramsFilePath" -Level "ERROR"
+            return $false
+        }
+    }
+    catch {
+        Write-Log "Failed to download parameters file: $($_.Exception.Message)" -Level "ERROR"
+        Write-Log "Please verify that the source URL is accessible: $paramsSource" -Level "ERROR"
         return $false
     }
 }
@@ -389,15 +437,22 @@ function Main {
             exit 1
         }
         
-        # Step 3: Login to Concourse
-        Write-Log "Step 3: Authenticating with Concourse" -Level "INFO"
+        # Step 3: Download parameters file
+        Write-Log "Step 3: Downloading parameters file" -Level "INFO"
+        if (!(Get-ParametersFile)) {
+            Write-Log "Cannot proceed without parameters file. Exiting." -Level "ERROR"
+            exit 1
+        }
+        
+        # Step 4: Login to Concourse
+        Write-Log "Step 4: Authenticating with Concourse" -Level "INFO"
         if (!(Connect-ToConcourse)) {
             Write-Log "Cannot proceed without Concourse authentication. Exiting." -Level "ERROR"
             exit 1
         }
         
-        # Step 4: Deploy pipelines
-        Write-Log "Step 4: Deploying pipelines" -Level "INFO"
+        # Step 5: Deploy pipelines
+        Write-Log "Step 5: Deploying pipelines" -Level "INFO"
         $deploymentSuccess = Deploy-Pipelines
         
         # Final summary
