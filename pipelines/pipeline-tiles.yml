@@ -697,11 +697,8 @@ jobs:
           set -eux
           gem install cf-uaac 
           # get opsman url:
-          #OPSMAN_URL=$(grep "^target:" env/body | cut -d"'" -f2)
           OPSMAN_URL=$(grep "^target:" env/"${ENV_FILE}" | sed "s/^target: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
-          #OPSMAN_USER=$(grep "^username:" env/"${ENV_FILE}"| cut -d"'" -f2)
           OPSMAN_USER=$(grep "^username:" env/"${ENV_FILE}" | sed "s/^username: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
-          #OPSMAN_PASS=$(grep "^password:" env/"${ENV_FILE}" | cut -d"'" -f2)
           OPSMAN_PASS=$(grep "^password:" env/"${ENV_FILE}" | sed "s/^password: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
           # Set uaa target to opsman/uaa --skip-ssl-validation
           echo "setting Opsman UAA Target"
