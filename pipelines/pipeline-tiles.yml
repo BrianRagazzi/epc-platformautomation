@@ -697,13 +697,13 @@ jobs:
           set -eux
           gem install cf-uaac 
           # get opsman url:
-          OPSMAN_URL=$(grep "^target:" env/"${ENV_FILE}" | sed "s/^target: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
-          OPSMAN_USER=$(grep "^username:" env/"${ENV_FILE}" | sed "s/^username: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
-          OPSMAN_PASS=$(grep "^password:" env/"${ENV_FILE}" | sed "s/^password: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
+          OPSMAN_URL=$(yq '.target' env/"${ENV_FILE}")
+          OPSMAN_USER=$(yq '.username' env/"${ENV_FILE}")
+          OPSMAN_PASS=$(yq '.password' env/"${ENV_FILE}")
           # Set uaa target to opsman/uaa --skip-ssl-validation
-          echo "setting Opsman UAA Target"
-          uaac target https://$OPSMAN_URL/uaa --skip-ssl-validation
-          uaac token owner get opsman "$OPSMAN_USER" -p "$OPSMAN_PASS" -s ""
+          # echo "setting Opsman UAA Target"
+          uaac target $OPSMAN_URL/uaa --skip-ssl-validation
+          uaac token owner get opsman $OPSMAN_USER -p $OPSMAN_PASS -s ""
 
           echo "checking uaac clients for $HUB_CLIENT_NAME"
           client_exists=$(uaac clients | grep $HUB_CLIENT_NAME || true)
@@ -734,13 +734,9 @@ jobs:
         - |
           set -eu
           gem install cf-uaac 
-          #OPSMAN_URL=$(grep "^target:" env/body | cut -d"'" -f2)
-          OPSMAN_URL=$(grep "^target:" env/"${ENV_FILE}" | sed "s/^target: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
-          #OPSMAN_USER=$(grep "^username:" env/"${ENV_FILE}"| cut -d"'" -f2)
-          OPSMAN_USER=$(grep "^username:" env/"${ENV_FILE}" | sed "s/^username: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
-          #OPSMAN_PASS=$(grep "^password:" env/"${ENV_FILE}" | cut -d"'" -f2)
-          OPSMAN_PASS=$(grep "^password:" env/"${ENV_FILE}" | sed "s/^password: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
-
+          OPSMAN_URL=$(yq '.target' env/"${ENV_FILE}")
+          OPSMAN_USER=$(yq '.username' env/"${ENV_FILE}")
+          OPSMAN_PASS=$(yq '.password' env/"${ENV_FILE}")
           # get BOSH creds from opsman via curl
           BOSH_CREDS=$(om --env env/"${ENV_FILE}" curl --silent --path /api/v0/deployed/director/credentials/bosh_commandline_credentials  | jq -r '.credential')
           UAA_CLIENT_ID=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CLIENT=[^ ]*' | cut -d'=' -f2)
