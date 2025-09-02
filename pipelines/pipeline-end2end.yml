@@ -548,7 +548,7 @@ jobs:
               # Clear cache for each matching resource
               for resource in $matching_resources; do
                   echo "  Clearing cache for $pipeline/$resource..."
-                  $FLY_CMD -t "$CONCOURSE_TARGET" clear-resource-cache -r "$pipeline/$resource"
+                  echo "y" | $FLY_CMD -t "$CONCOURSE_TARGET" clear-resource-cache -r "$pipeline/$resource"
                   if [ $? -eq 0 ]; then
                       echo "    ✓ Successfully cleared cache for $pipeline/$resource"
                   else
