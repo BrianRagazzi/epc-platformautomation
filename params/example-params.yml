@@ -27,6 +27,7 @@ ldap_user: platformadmin@mydomain.com
 new_orgs: "platform,devtest"
 new_spaces: "platform/genai,platform/dev"
 ldap_admin_group_dn: "CN=Platform Admins,CN=Users,DC=mydomain,DC=com"
+docker_host: docker.mydomain.com
 
 hub_client_name: hub-tas-collector
 hub_client_password: hub-tas-collector
