@@ -480,6 +480,24 @@ jobs:
     params:
       unpack: true
 
+  - task: delete-pivotal-files-from-worker
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      params:
+        DOCKER_HOST: ((docker_host))
+        WORKER_NAME: concourse-worker-1
+        DOCKER_PASS: ((s3_secret_access_key))
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          echo "Connecting to @$DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
+          command="docker exec $WORKER_NAME find /worker-state/volumes/live -name *pivotal* -type f -delete"
+          sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$command"
+
   - task: apply-product-changes
     image: platform-automation-vsphere-image
     file: platform-automation-tasks/tasks/apply-changes.yml
@@ -730,6 +748,24 @@ jobs:
     params:
       unpack: true
 
+  - task: delete-pivotal-files-from-worker
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      params:
+        DOCKER_HOST: ((docker_host))
+        WORKER_NAME: concourse-worker-1
+        DOCKER_PASS: ((s3_secret_access_key))
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          echo "Connecting to @$DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
+          command="docker exec $WORKER_NAME find /worker-state/volumes/live -name *pivotal* -type f -delete"
+          sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$command"
+
   - task: apply-changes-phase-two
     image: platform-automation-vsphere-image
     file: platform-automation-tasks/tasks/apply-changes.yml
@@ -815,7 +851,7 @@ jobs:
           BOSH_DIRECTOR_IP=$(echo "$BOSH_CREDS" | grep -o 'BOSH_ENVIRONMENT=[^ ]*' | cut -d'=' -f2)
           echo "BOSH Director IP: $BOSH_DIRECTOR_IP"
           # set uaac target to bosh director:8443 --skip-ssl-validation
-          uaac target https://$BOSH_DIRECTOR_IP:8443 --skip-ssl-validation
+          uaac target $BOSH_DIRECTOR_IP:8443 --skip-ssl-validation
           uaac token client get $UAA_CLIENT_ID --secret $UAA_CLIENT_SECRET
 
           # check for client, create if it doesn't exists.
