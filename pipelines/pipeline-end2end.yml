@@ -469,9 +469,10 @@ jobs:
 
 - name: free-space-on-harbor-vm-phase-one
   plan:
-  - get: platform-automation-custom-image
+  - get: env
     passed: [ cf-small-footprint, postgres ]
     trigger: true
+  - get: platform-automation-custom-image
     params:
       unpack: true
   - task: clear-resource-cache
@@ -834,9 +835,10 @@ jobs:
 
 - name: free-space-on-harbor-vm-phase-two
   plan:
-  - get: platform-automation-custom-image
+  - get: env
     passed: [ genai, hub, hub-collector ]
     trigger: true
+  - get: platform-automation-custom-image
     params:
       unpack: true
   - task: clear-resource-cache
