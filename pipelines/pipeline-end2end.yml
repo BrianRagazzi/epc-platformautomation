@@ -482,7 +482,7 @@ jobs:
       params:
         CONCOURSE: ((concourse_url))
         CONCOURSE_USER: "admin"
-        CONCOURSE_PASS: ((s3_access_key_id))
+        CONCOURSE_PASS: ((s3_secret_access_key))
         CONCOURSE_TARGET: "ci"
       run:
         path: bash
