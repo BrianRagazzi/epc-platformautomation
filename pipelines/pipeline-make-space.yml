@@ -1,4 +1,13 @@
 ---
+# YAML anchors
+s3_credentials: &s3_credentials
+  access_key_id: ((s3_access_key_id))
+  secret_access_key: ((s3_secret_access_key))
+  endpoint: ((s3_endpoint))
+  region_name: ((s3_region_name))
+  skip_ssl_verification: true
+  use_path_style: true
+
 resources:
 - name: platform-automation-custom-image
   type: s3
@@ -6,7 +15,6 @@ resources:
     <<: *s3_credentials
     bucket: binaries
     regexp: platauto-uaac-(.*).tar.gz
-
 
 jobs:
 - name: free-space-on-harbor-vm
