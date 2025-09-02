@@ -1005,7 +1005,7 @@ jobs:
           OPSMAN_PASS=$(yq '.password' env/"${ENV_FILE}")
           # Set uaa target to opsman/uaa --skip-ssl-validation
           echo "setting Opsman UAA Target"
-          uaac target https://$OPSMAN_URL/uaa --skip-ssl-validation
+          uaac target $OPSMAN_URL/uaa --skip-ssl-validation
           uaac token owner get opsman "$OPSMAN_USER" -p "$OPSMAN_PASS" -s ""
 
           echo "checking uaac clients for $HUB_CLIENT_NAME"
