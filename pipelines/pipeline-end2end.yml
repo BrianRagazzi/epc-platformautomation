@@ -565,7 +565,7 @@ jobs:
       params:
         DOCKER_HOST: ((docker_host))
         WORKER_NAME: concourse-worker-1
-        DOCKER_PASS: ((s3_access_key_id))
+        DOCKER_PASS: ((s3_secret_access_key))
       run:
         path: bash
         args:
@@ -576,7 +576,7 @@ jobs:
           chmod +x ./fly
           mv ./fly /usr/local/bin/
 
-          echo "Connecting to @$DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
+          echo "Connecting to $DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
           command="docker exec $WORKER_NAME find /worker-state/volumes/live -name *pivotal* -type f -delete"
           sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$command"
 
@@ -848,7 +848,7 @@ jobs:
       params:
         CONCOURSE: ((concourse_url))
         CONCOURSE_USER: "admin"
-        CONCOURSE_PASS: ((s3_access_key_id))
+        CONCOURSE_PASS: ((s3_secret_access_key))
         CONCOURSE_TARGET: "ci"
       run:
         path: bash
@@ -914,7 +914,7 @@ jobs:
               # Clear cache for each matching resource
               for resource in $matching_resources; do
                   echo "  Clearing cache for $pipeline/$resource..."
-                  $FLY_CMD -t "$CONCOURSE_TARGET" clear-resource-cache -r "$pipeline/$resource"
+                  echo "y" | $FLY_CMD -t "$CONCOURSE_TARGET" clear-resource-cache -r "$pipeline/$resource"
                   if [ $? -eq 0 ]; then
                       echo "    ✓ Successfully cleared cache for $pipeline/$resource"
                   else
@@ -931,7 +931,7 @@ jobs:
       params:
         DOCKER_HOST: ((docker_host))
         WORKER_NAME: concourse-worker-1
-        DOCKER_PASS: ((s3_access_key_id))
+        DOCKER_PASS: ((s3_secret_access_key))
       run:
         path: bash
         args:
@@ -942,7 +942,7 @@ jobs:
           chmod +x ./fly
           mv ./fly /usr/local/bin/
 
-          echo "Connecting to @$DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
+          echo "Connecting to $DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
           command="docker exec $WORKER_NAME find /worker-state/volumes/live -name *pivotal* -type f -delete"
           sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$command"
 
