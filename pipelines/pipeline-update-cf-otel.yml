@@ -30,6 +30,13 @@ resources:
     bucket: binaries
     regexp: vsphere-platform-automation-image-(.*).tar.gz
 
+- name: platform-automation-tasks
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: platform-automation-tasks-(.*).zip
+
 - name: env
   <<: *http_resource
   source:
@@ -41,7 +48,7 @@ resources:
     url: ((http_config_srt_otel_template))
 
 jobs:
-- name: I-have-installed-hub-tas-collector-already
+- name: update-cf-following-hub-tas-collector
   plan:
   - get: platform-automation-vsphere-image
     params:
@@ -65,7 +72,7 @@ jobs:
   plan:
   - get: env
     trigger: true
-    passed: [ I-have-installed-hub-tas-collector-already ]
+    passed: [ update-cf-following-hub-tas-collector ]
   - get: platform-automation-vsphere-image
     params:
       unpack: true
