@@ -1,0 +1,34 @@
+---
+resources:
+- name: platform-automation-custom-image
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: platauto-uaac-(.*).tar.gz
+
+
+jobs:
+- name: free-space-on-harbor-vm
+  plan:
+  - get: platform-automation-custom-image
+    params:
+      unpack: true
+  - task: delete-pivotal-files-from-worker
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      params:
+        DOCKER_HOST: "harbor.elasticsky.cloud" #((docker_host))
+        WORKER_NAME: concourse-worker-1
+        DOCKER_PASS: VMware123!
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          command="docker exec $WORKER_NAME find /worker-state/volumes/live -name *pivotal* -type f -delete"
+          sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$command"

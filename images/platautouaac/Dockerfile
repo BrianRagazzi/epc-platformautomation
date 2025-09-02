@@ -2,7 +2,7 @@
 FROM platform-automation:5.3.0
 
 RUN apt-get -y update && \
-    apt-get install -y wget jq build-essential ruby-full curl && \
+    apt-get install -y wget jq build-essential ruby-full curl sshpass && \
     gem install cf-uaac && \
     wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && \
     chmod +x /usr/bin/yq 
