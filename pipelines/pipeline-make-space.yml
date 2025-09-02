@@ -26,8 +26,6 @@ jobs:
     image: platform-automation-custom-image
     config:
       platform: linux
-      inputs:
-      - name: env
       params:
         DOCKER_HOST: "harbor.elasticsky.cloud" #((docker_host))
         WORKER_NAME: concourse-worker-1
@@ -37,6 +35,7 @@ jobs:
         args:
         - -c
         - |
-          set -eu
+          set -eux
+          echo "Connecting to @$DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
           command="docker exec $WORKER_NAME find /worker-state/volumes/live -name *pivotal* -type f -delete"
           sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$command"
