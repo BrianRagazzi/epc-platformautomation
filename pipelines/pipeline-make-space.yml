@@ -1,0 +1,131 @@
+---
+# YAML anchors
+s3_credentials: &s3_credentials
+  access_key_id: ((s3_access_key_id))
+  secret_access_key: ((s3_secret_access_key))
+  endpoint: ((s3_endpoint))
+  region_name: ((s3_region_name))
+  skip_ssl_verification: true
+  use_path_style: true
+
+resources:
+- name: platform-automation-custom-image
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: platauto-uaac-(.*).tar.gz
+
+jobs:
+- name: free-space-on-harbor-vm
+  plan:
+  - get: platform-automation-custom-image
+    params:
+      unpack: true
+  - task: clear-cesource-cache
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      params:
+        DOCKER_HOST: "harbor.elasticsky.cloud" #((docker_host))
+        WORKER_NAME: concourse-worker-1
+        DOCKER_PASS: VMware123!
+        CONCOURSE: "http://concourse.elasticsky.cloud:8080"
+        CONCOURSE_USER: "admin"
+        CONCOURSE_PASS: "VMware123!"
+        CONCOURSE_TARGET: "ci"
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eux
+          #!/bin/bash
+          # Clears cache for resources ending with 'product' that have 'succeeded' status
+
+          echo "Starting Concourse resource cache cleanup..."
+          # Check if fly CLI exists, if not download it
+          if ! command -v fly &> /dev/null; then
+              echo "fly CLI not found, downloading from Concourse..."
+              curl "$CONCOURSE/api/v1/cli?arch=amd64&platform=linux" -o fly
+              if [ $? -ne 0 ]; then
+                  echo "Error: Failed to download fly CLI"
+                  exit 1
+              fi
+              chmod +x fly
+              echo "fly CLI downloaded successfully"
+              FLY_CMD="./fly"
+          else
+              echo "fly CLI found in PATH"
+              FLY_CMD="fly"
+          fi
+          # Step 1: Login to Concourse
+          echo "Logging in to Concourse at $CONCOURSE..."
+          $FLY_CMD -t "$CONCOURSE_TARGET" login -c "$CONCOURSE" -u "$CONCOURSE_USER" -p "$CONCOURSE_PASS"
+          if [ $? -ne 0 ]; then
+              echo "Error: Failed to login to Concourse"
+              exit 1
+          fi
+          echo "Login successful!"
+          # Step 2: Get all pipelines
+          echo "Enumerating pipelines..."
+          pipelines=$($FLY_CMD -t "$CONCOURSE_TARGET" pipelines --json | jq -r '.[].name')
+          if [ -z "$pipelines" ]; then
+              echo "No pipelines found"
+              exit 0
+          fi
+          echo "Found pipelines: $pipelines"
+          # Step 3 & 4: For each pipeline, get resources and clear cache for matching ones
+          for pipeline in $pipelines; do
+              echo ""
+              echo "Processing pipeline: $pipeline"
+              # Get resources for this pipeline
+              resources=$($FLY_CMD -t "$CONCOURSE_TARGET" resources -p "$pipeline" --json)
+              if [ $? -ne 0 ]; then
+                  echo "Warning: Could not get resources for pipeline $pipeline, skipping..."
+                  continue
+              fi
+              # Filter resources that end with 'product' and have 'succeeded' status
+              matching_resources=$(echo "$resources" | jq -r '.[] | select(.name | endswith("product")) | select(.build.status == "succeeded") | .name')
+              if [ -z "$matching_resources" ]; then
+                  echo "  No matching resources found in pipeline $pipeline"
+                  continue
+              fi
+              echo "  Found matching resources in $pipeline:"
+              for resource in $matching_resources; do
+                  echo "    - $resource"
+              done
+              # Clear cache for each matching resource
+              for resource in $matching_resources; do
+                  echo "  Clearing cache for $pipeline/$resource..."
+                  $FLY_CMD -t "$CONCOURSE_TARGET" clear-resource-cache -r "$pipeline/$resource"
+                  if [ $? -eq 0 ]; then
+                      echo "    ✓ Successfully cleared cache for $pipeline/$resource"
+                  else
+                      echo "    ✗ Failed to clear cache for $pipeline/$resource"
+                  fi
+              done
+          done
+          echo "Cache cleanup completed!"
+
+  - task: delete-pivotal-files-from-worker
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      params:
+        DOCKER_HOST: "harbor.elasticsky.cloud" #((docker_host))
+        WORKER_NAME: concourse-worker-1
+        DOCKER_PASS: VMware123!
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          curl 'http://concourse.elasticsky.cloud:8080/api/v1/cli?arch=amd64&platform=linux' -o fly
+          chmod +x ./fly
+          mv ./fly /usr/local/bin/
+
+          echo "Connecting to @$DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
+          command="docker exec $WORKER_NAME find /worker-state/volumes/live -name *pivotal* -type f -delete"
+          sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$command"

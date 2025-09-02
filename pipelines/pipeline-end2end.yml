@@ -476,6 +476,9 @@ jobs:
   - get: platform-automation-vsphere-image
     params:
       unpack: true
+  - get: platform-automation-custom-image
+    params:
+      unpack: true
   - get: platform-automation-tasks
     params:
       unpack: true
@@ -742,6 +745,9 @@ jobs:
     passed: [ genai, hub, hub-collector ]
     trigger: true
   - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-custom-image
     params:
       unpack: true
   - get: platform-automation-tasks
