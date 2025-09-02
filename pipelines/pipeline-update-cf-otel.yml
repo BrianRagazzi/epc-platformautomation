@@ -78,7 +78,7 @@ jobs:
       unpack: true
   - get: config-srt-otel-template
   - task: update-cf-otel-config
-    image: platform-automation-custom-image
+    image: platform-automation-vsphere-image
     config:
       platform: linux
       inputs:
