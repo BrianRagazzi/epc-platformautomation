@@ -925,6 +925,26 @@ jobs:
           echo "Cache cleanup completed!"
 
   - task: delete-pivotal-files-from-worker
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      params:
+        DOCKER_HOST: ((docker_host))
+        WORKER_NAME: concourse-worker-1
+        DOCKER_PASS: ((s3_access_key_id))
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          curl 'http://concourse.elasticsky.cloud:8080/api/v1/cli?arch=amd64&platform=linux' -o fly
+          chmod +x ./fly
+          mv ./fly /usr/local/bin/
+
+          echo "Connecting to @$DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
+          command="docker exec $WORKER_NAME find /worker-state/volumes/live -name *pivotal* -type f -delete"
+          sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$command"
 
 - name: apply-changes-phase-two
   serial: true
