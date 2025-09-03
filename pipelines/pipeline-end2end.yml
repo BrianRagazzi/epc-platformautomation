@@ -186,6 +186,11 @@ resources:
   source:
     url: ((http_config_srt_otel_template))
 
+- name: fixhub-script
+  <<: *http_resource
+  source:
+    url: ((http_config_fixhub_script))
+
 groups:
 - name: foundation-end-2-end
   jobs:
@@ -201,6 +206,7 @@ groups:
   - hub-collector
   - apply-changes-phase-two
   - add-hub-collector-clients
+  - opsman-tasks
   - free-space-on-harbor-vm-phase-one
   - free-space-on-harbor-vm-phase-two
 - name: update-cf-hub-integration
@@ -1085,6 +1091,61 @@ jobs:
           fi
           echo "listing BOSH Director UAA Clients to verify"
           uaac clients | grep -A 5 -B 5 "$HUB_CLIENT_NAME" || echo "[WARN] Client not found in BOSH UAA listing"
+
+- name: opsman-tasks
+  serial: true
+  serial_groups: [ core ]
+  build_log_retention:
+    builds: 2
+  plan:
+  - get: env
+    passed: [ apply-changes-phase-two ]
+    trigger: true
+  - get: opsman-ssh-key
+  - get: fixhub-script
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: commands
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      - name: opsman-ssh-key
+      - name: fixhub-script
+      params:
+        ENV_FILE: body
+        FIXHUB_SCRIPT_URL: ((http_config_fixhub_script))
+
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eux
+          OPSMAN_SSH_KEY="./opsman-ssh-key/body"
+          OPSMAN_HOSTNAME=$(grep "^target:" env/"${ENV_FILE}" | sed "s/^target: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
+          chmod 600 $OPSMAN_SSH_KEY
+          command="sudo apt-get update && sudo apt-get install nano jq wget -y"
+          ssh -i "$OPSMAN_SSH_KEY" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null ubuntu@"$OPSMAN_HOSTNAME" "$command"
+
+          BOSH_CREDS=$(om --env env/"${ENV_FILE}" curl --silent --path /api/v0/deployed/director/credentials/bosh_commandline_credentials  | jq -r '.credential')
+          BOSH_CLIENT=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CLIENT=[^ ]*' | cut -d'=' -f2)
+          BOSH_CLIENT_SECRET=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CLIENT_SECRET=[^ ]*' | cut -d'=' -f2)
+          BOSH_CA_CERT=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CA_CERT=[^ ]*' | cut -d'=' -f2)
+          BOSH_ENVIRONMENT=$(echo "$BOSH_CREDS" | grep -o 'BOSH_ENVIRONMENT=[^ ]*' | cut -d'=' -f2)
+
+          command="echo 'export BOSH_CLIENT=$BOSH_CLIENT' >> ~/.profile && echo 'export BOSH_CLIENT_SECRET=$BOSH_CLIENT_SECRET' >> ~/.profile && echo 'export BOSH_CA_CERT=$BOSH_CA_CERT' >> ~/.profile && echo 'export BOSH_ENVIRONMENT=$BOSH_ENVIRONMENT' >> ~/.profile"
+          ssh -i "$OPSMAN_SSH_KEY" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null ubuntu@"$OPSMAN_HOSTNAME" "$command"
+
+          scriptname=$(basename $FIXHUB_SCRIPT_URL)
+          command="wget -O ~/$scriptname $FIXHUB_SCRIPT_URL && chmod +x ~/$scriptname"
+          ssh -i "$OPSMAN_SSH_KEY" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null ubuntu@"$OPSMAN_HOSTNAME" "$command"
 
 - name: update-cf-following-hub-tas-collector
   plan:
