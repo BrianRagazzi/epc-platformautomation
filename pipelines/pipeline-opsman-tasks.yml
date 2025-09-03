@@ -103,9 +103,10 @@ jobs:
           export BOSH_CA_CERT=$BOSH_CA_CERT 
           export BOSH_ENVIRONMENT=$BOSH_ENVIRONMENT"
 
-          command="cat >> ~/.profile << 'EOF'
-          $bosh-creds
-          EOF"
+          # command="cat >> ~/.profile << EOF
+          # $bosh-creds
+          # EOF"
+          command="echo 'export BOSH_CLIENT=$BOSH_CLIENT' >> ~/.profile && echo 'export BOSH_CLIENT_SECRET=$BOSH_CLIENT_SECRET' >> ~/.profile && echo 'export BOSH_CA_CERT=$BOSH_CA_CERT' >> ~/.profile && echo 'export BOSH_ENVIRONMENT=$BOSH_ENVIRONMENT' >> ~/.profile"
           ssh -i "$OPSMAN_SSH_KEY" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null ubuntu@"$OPSMAN_HOSTNAME" "$command"
 
                     
