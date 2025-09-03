@@ -54,6 +54,12 @@ resources:
   <<: *http_resource
   source:
     url: ((http_opsman_ssh_key))
+
+- name: fixhub-script
+  <<: *http_resource
+  source:
+    url: ((http_config_fixhub_script))
+
 jobs:
 
 - name: run-on-opsman
@@ -64,6 +70,7 @@ jobs:
   plan:
   - get: env
   - get: opsman-ssh-key
+  - get: fixhub-script
   - get: platform-automation-vsphere-image
     params:
       unpack: true
@@ -78,13 +85,16 @@ jobs:
       inputs:
       - name: env
       - name: opsman-ssh-key
+      - name: fixhub-script
       params:
         ENV_FILE: body
+        FIXHUB_SCRIPT_URL: ((http_config_fixhub_script))
+
       run:
         path: bash
         args:
         - -c
-        - |+
+        - |
           set -eux
           OPSMAN_SSH_KEY="./opsman-ssh-key/body"
           OPSMAN_HOSTNAME=$(grep "^target:" env/"${ENV_FILE}" | sed "s/^target: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
@@ -98,15 +108,9 @@ jobs:
           BOSH_CA_CERT=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CA_CERT=[^ ]*' | cut -d'=' -f2)
           BOSH_ENVIRONMENT=$(echo "$BOSH_CREDS" | grep -o 'BOSH_ENVIRONMENT=[^ ]*' | cut -d'=' -f2)
 
-          bosh-creds="export BOSH_CLIENT=$BOSH_CLIENT
-          export BOSH_CLIENT_SECRET=$BOSH_CLIENT_SECRET
-          export BOSH_CA_CERT=$BOSH_CA_CERT 
-          export BOSH_ENVIRONMENT=$BOSH_ENVIRONMENT"
-
-          # command="cat >> ~/.profile << EOF
-          # $bosh-creds
-          # EOF"
           command="echo 'export BOSH_CLIENT=$BOSH_CLIENT' >> ~/.profile && echo 'export BOSH_CLIENT_SECRET=$BOSH_CLIENT_SECRET' >> ~/.profile && echo 'export BOSH_CA_CERT=$BOSH_CA_CERT' >> ~/.profile && echo 'export BOSH_ENVIRONMENT=$BOSH_ENVIRONMENT' >> ~/.profile"
           ssh -i "$OPSMAN_SSH_KEY" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null ubuntu@"$OPSMAN_HOSTNAME" "$command"
 
-                    
+          scriptname=$(basename $FIXHUB_SCRIPT_URL)
+          command="wget -O ~/$scriptname $FIXHUB_SCRIPT_URL && chmod +x"
+          ssh -i "$OPSMAN_SSH_KEY" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null ubuntu@"$OPSMAN_HOSTNAME" "$command"
