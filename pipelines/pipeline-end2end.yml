@@ -203,7 +203,7 @@ groups:
   - add-hub-collector-clients
   - free-space-on-harbor-vm-phase-one
   - free-space-on-harbor-vm-phase-two
-- name: update-cf-otel
+- name: update-cf-hub-integration
   jobs:
   - update-cf-following-hub-tas-collector
   - update-cf-hub-integration
