@@ -1,0 +1,136 @@
+---
+# YAML anchors
+s3_credentials: &s3_credentials
+  access_key_id: ((s3_access_key_id))
+  secret_access_key: ((s3_secret_access_key))
+  endpoint: ((s3_endpoint))
+  region_name: ((s3_region_name))
+  skip_ssl_verification: true
+  use_path_style: true
+
+http_resource: &http_resource
+  type: http-resource
+  source:
+    insecure: true
+
+resource_types:
+# - name: http-resource
+#   type: docker-image
+#   source:
+#     repository: "harbor.elasticsky.cloud/library/jgriff/http-resource"
+#     tag: 'latest'
+#     insecure: true
+#     insecure_registries: [ "harbor.elasticsky.cloud" ]
+- name: http-resource
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: http-resource-(.*).tar.gz
+
+resources:
+- name: platform-automation-vsphere-image
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: vsphere-platform-automation-image-(.*).tar.gz
+
+- name: platform-automation-tasks
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: platform-automation-tasks-(.*).zip
+
+- name: env
+  <<: *http_resource
+  source:
+    url: ((http_config_env))
+
+- name: config-srt-otel-template
+  <<: *http_resource
+  source:
+    url: ((http_config_srt_otel_template))
+
+jobs:
+- name: update-cf-following-hub-tas-collector
+  plan:
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: env
+    #passed: [ apply-changes-phase-one ]
+  - task: validate-config
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "Starting update of cf for Hub TAS Collector"
+
+- name: update-cf-otel-config
+  plan:
+  - get: env
+    trigger: true
+    passed: [ update-cf-following-hub-tas-collector ]
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: config-srt-otel-template
+  - task: update-cf-otel-config
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      - name: config-srt-otel-template
+      params:
+        ENV_FILE: body
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          #!/bin/bash
+          filename=cf-otel-config.yml
+          touch $filename
+          ca_pem=$(om --env env/"${ENV_FILE}" certificate-authority --cert-pem)
+          { echo "opsman-ca: |"; echo "$ca_pem" | sed 's/^/  /'; } >> $filename
+          cert_pem=$(om --env env/"${ENV_FILE}" credentials -p hub-tas-collector -c .hub_tas_agent.open_telemetry_agent_mtls -t json -f cert_pem)
+          { echo "collector-cert-pem: |"; echo "$cert_pem" | sed 's/^/  /'; } >> $filename
+          private_key_pem=$(om --env env/"${ENV_FILE}" credentials -p hub-tas-collector -c .hub_tas_agent.open_telemetry_agent_mtls -t json -f private_key_pem)
+          { echo "collector-private-key-pem: |"; echo "$private_key_pem" | sed 's/^/  /'; } >> $filename
+          # Updating config for cf/srt
+          om --env env/"${ENV_FILE}" configure-product -p cf -c config-srt-otel-template/body -l $filename
+
+- name: apply-changes-cf-otel
+  serial: true
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: env
+    passed: [ update-cf-otel-config ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: apply-changes-cf
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/apply-changes.yml
+    attempts: 4
+    input_mapping:
+      env: env
+    params:
+      ENV_FILE: body
+      SELECTIVE_DEPLOY_PRODUCTS: "cf,hub-tas-collector"
