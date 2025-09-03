@@ -146,6 +146,11 @@ resources:
   source:
     url: ((http_config_opsman))
 
+- name: opsman-ssh-key
+  <<: *http_resource
+  source:
+    url: ((http_opsman_ssh_key))
+
 - name: config-director
   <<: *http_resource
   source:
