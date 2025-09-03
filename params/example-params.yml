@@ -1,12 +1,10 @@
-s3_access_key_id: accesskey
-s3_secret_access_key: secret
-s3_endpoint: minio.local
-s3_region_name: us-east1
-
 s3_access_key_id: s3-access-key
 s3_secret_access_key: s3-secret
 s3_endpoint: https://minio.mydomain
 s3_region_name: us-east1
+
+image_repo_host: harbor.mydomain.com
+image_repo_project: library
 
 certificate_domains: "*.sys.mydomain.com,*.apps.mydomain.com,*.login.sys.mydomain.com,*.uaa.sys.mydomain.com"
 

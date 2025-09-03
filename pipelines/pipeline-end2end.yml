@@ -36,10 +36,10 @@ resource_types:
 - name: http-resource
   type: docker-image
   source:
-    repository: "harbor.elasticsky.cloud/library/jgriff/http-resource"
+    repository: "((registry_endpoint))/((registry_repo))/jgriff/http-resource"
     tag: 'latest'
     insecure: true
-    insecure_registries: [ "harbor.elasticsky.cloud" ]
+    insecure_registries: [ "((registry_endpoint))" ]
 
 # - name: http-resource
 #   type: docker-image
@@ -47,7 +47,15 @@ resource_types:
 #     repository: jgriff/http-resource
 #     # this works when provided with a username and password:
 resources:
-# S3 Resources
+# registry-image Resources
+- name: platform-automation-custom-image
+  type: registry-image
+  source:
+    repository: ((registry_endpoint))/((registry_repo))/platauto-uaac
+    tag: ((platauto_image_tag))
+    insecure: true
+
+# s3 Resources
 - name: platform-automation-tasks
   type: s3
   source:
@@ -62,12 +70,12 @@ resources:
     bucket: binaries
     regexp: vsphere-platform-automation-image-(.*).tar.gz
 
-- name: platform-automation-custom-image
-  type: s3
-  source:
-    <<: *s3_credentials
-    bucket: binaries
-    regexp: platauto-uaac-(.*).tar.gz
+# - name: platform-automation-custom-image #Move to Registry Image
+#   type: s3
+#   source:
+#     <<: *s3_credentials
+#     bucket: binaries
+#     regexp: platauto-uaac-(.*).tar.gz
 
 - name: stemcell
   type: s3
@@ -483,8 +491,8 @@ jobs:
     passed: [ cf-small-footprint, postgres ]
     trigger: true
   - get: platform-automation-custom-image
-    params:
-      unpack: true
+    #params:
+    #  unpack: true
   - task: clear-resource-cache
     image: platform-automation-custom-image
     config:
@@ -602,8 +610,8 @@ jobs:
     params:
       unpack: true
   - get: platform-automation-custom-image
-    params:
-      unpack: true
+    #params:
+    #  unpack: true
   - get: platform-automation-tasks
     params:
       unpack: true
@@ -623,8 +631,8 @@ jobs:
     passed: [ apply-changes-phase-one ]
     trigger: true
   - get: platform-automation-custom-image
-    params:
-      unpack: true
+    #params:
+    #  unpack: true
 
   - task: add-ldap-users-to-new-org
     image: platform-automation-custom-image
@@ -849,8 +857,8 @@ jobs:
     passed: [ genai, hub, hub-collector ]
     trigger: true
   - get: platform-automation-custom-image
-    params:
-      unpack: true
+    #params:
+    #  unpack: true
   - task: clear-resource-cache
     image: platform-automation-custom-image
     config:
@@ -968,8 +976,8 @@ jobs:
     params:
       unpack: true
   - get: platform-automation-custom-image
-    params:
-      unpack: true
+    #params:
+    #  unpack: true
   - get: platform-automation-tasks
     params:
       unpack: true
@@ -990,8 +998,8 @@ jobs:
     passed: [ apply-changes-phase-two ]
     trigger: true
   - get: platform-automation-custom-image
-    params:
-      unpack: true
+    #params:
+    #  unpack: true
   - task: add-opsman-hub-collector #repeat for Director
     image: platform-automation-custom-image
     config:
