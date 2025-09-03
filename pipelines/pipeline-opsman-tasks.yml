@@ -112,5 +112,5 @@ jobs:
           ssh -i "$OPSMAN_SSH_KEY" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null ubuntu@"$OPSMAN_HOSTNAME" "$command"
 
           scriptname=$(basename $FIXHUB_SCRIPT_URL)
-          command="wget -O ~/$scriptname $FIXHUB_SCRIPT_URL && chmod +x"
+          command="wget -O ~/$scriptname $FIXHUB_SCRIPT_URL && chmod +x ~/$scriptname"
           ssh -i "$OPSMAN_SSH_KEY" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null ubuntu@"$OPSMAN_HOSTNAME" "$command"
