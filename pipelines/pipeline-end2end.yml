@@ -46,14 +46,16 @@ resource_types:
 #   source:
 #     repository: jgriff/http-resource
 #     # this works when provided with a username and password:
+
 resources:
 # registry-image Resources
-- name: platform-automation-custom-image
-  type: registry-image
-  source:
-    repository: ((registry_endpoint))/((registry_repo))/platauto-uaac
-    tag: ((platauto_image_tag))
-    insecure: true
+# Note:  local harbor uses self-signed cert
+# - name: platform-automation-custom-image
+#   type: registry-image
+#   source:
+#     repository: ((registry_endpoint))/((registry_repo))/platauto-uaac
+#     tag: ((platauto_image_tag))
+#     insecure: true
 
 # s3 Resources
 - name: platform-automation-tasks
@@ -70,12 +72,12 @@ resources:
     bucket: binaries
     regexp: vsphere-platform-automation-image-(.*).tar.gz
 
-# - name: platform-automation-custom-image #Move to Registry Image
-#   type: s3
-#   source:
-#     <<: *s3_credentials
-#     bucket: binaries
-#     regexp: platauto-uaac-(.*).tar.gz
+- name: platform-automation-custom-image
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: platauto-uaac-(.*).tar.gz
 
 - name: stemcell
   type: s3
