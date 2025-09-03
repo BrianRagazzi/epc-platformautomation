@@ -62,7 +62,7 @@ resources:
 
 jobs:
 
-- name: run-on-opsman
+- name: run-fixhub-script
   serial: true
   serial_groups: [ core ]
   build_log_retention:
@@ -104,5 +104,5 @@ jobs:
           command="wget -O ~/$scriptname $FIXHUB_SCRIPT_URL && chmod +x ~/$scriptname"
           ssh -i "$OPSMAN_SSH_KEY" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null ubuntu@"$OPSMAN_HOSTNAME" "$command"
 
-          command="source ~/.profile && ~/fixhub.sh
+          command="source ~/.profile && ~/fixhub.sh"
           ssh -i "$OPSMAN_SSH_KEY" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null ubuntu@"$OPSMAN_HOSTNAME" "$command"
