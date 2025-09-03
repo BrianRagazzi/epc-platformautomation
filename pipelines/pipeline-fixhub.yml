@@ -1,0 +1,108 @@
+---
+# YAML anchors
+s3_credentials: &s3_credentials
+  access_key_id: ((s3_access_key_id))
+  secret_access_key: ((s3_secret_access_key))
+  endpoint: ((s3_endpoint))
+  region_name: ((s3_region_name))
+  skip_ssl_verification: true
+  use_path_style: true
+
+http_resource: &http_resource
+  type: http-resource
+  source:
+    insecure: true
+
+resource_types:
+- name: http-resource
+  type: docker-image
+  source:
+    repository: "harbor.elasticsky.cloud/library/jgriff/http-resource"
+    tag: 'latest'
+    insecure: true
+    insecure_registries: [ "harbor.elasticsky.cloud" ]
+
+# - name: http-resource
+#   type: docker-image
+#   source:
+#     repository: jgriff/http-resource
+#     # this works when provided with a username and password:
+
+resources:
+# S3 Resources
+- name: platform-automation-tasks
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: platform-automation-tasks-(.*).zip
+
+- name: platform-automation-vsphere-image
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: vsphere-platform-automation-image-(.*).tar.gz
+
+# HTTP Resources
+- name: env
+  <<: *http_resource
+  source:
+    url: ((http_config_env))
+
+- name: opsman-ssh-key
+  <<: *http_resource
+  source:
+    url: ((http_opsman_ssh_key))
+
+- name: fixhub-script
+  <<: *http_resource
+  source:
+    url: ((http_config_fixhub_script))
+
+jobs:
+
+- name: run-on-opsman
+  serial: true
+  serial_groups: [ core ]
+  build_log_retention:
+    builds: 2
+  plan:
+  - get: env
+  - get: opsman-ssh-key
+  - get: fixhub-script
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: commands
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      - name: opsman-ssh-key
+      - name: fixhub-script
+      params:
+        ENV_FILE: body
+        FIXHUB_SCRIPT_URL: ((http_config_fixhub_script))
+
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eux
+          OPSMAN_SSH_KEY="./opsman-ssh-key/body"
+          OPSMAN_HOSTNAME=$(grep "^target:" env/"${ENV_FILE}" | sed "s/^target: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
+          chmod 600 $OPSMAN_SSH_KEY
+
+          scriptname=$(basename $FIXHUB_SCRIPT_URL)
+          command="wget -O ~/$scriptname $FIXHUB_SCRIPT_URL && chmod +x ~/$scriptname"
+          ssh -i "$OPSMAN_SSH_KEY" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null ubuntu@"$OPSMAN_HOSTNAME" "$command"
+
+          command="source ~/.profile && ~/fixhub.sh
+          ssh -i "$OPSMAN_SSH_KEY" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null ubuntu@"$OPSMAN_HOSTNAME" "$command"

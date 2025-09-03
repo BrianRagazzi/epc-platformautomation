@@ -1132,7 +1132,7 @@ jobs:
         args:
         - -c
         - |
-          set -eux
+          set -eu
           OPSMAN_SSH_KEY="./opsman-ssh-key/body"
           OPSMAN_HOSTNAME=$(grep "^target:" env/"${ENV_FILE}" | sed "s/^target: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
           chmod 600 $OPSMAN_SSH_KEY
