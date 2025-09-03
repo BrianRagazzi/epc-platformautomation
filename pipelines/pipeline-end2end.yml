@@ -1152,7 +1152,7 @@ jobs:
     builds: 1
   plan:
   - get: env
-    passed: [ update-cf-otel-config ]
+    passed: [ update-cf-hub-integration ]
     trigger: true
   - get: platform-automation-vsphere-image
     params:
