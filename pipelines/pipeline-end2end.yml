@@ -98,14 +98,6 @@ resources:
 #     bucket: binaries
 #     regexp: platauto-uaac-(.*).tar.gz
 
-- name: platform-automation-custom-image
-  type: docker-image
-  source:
-    repository: "((registry_endpoint))/((registry_repo))/platauto-uaac"
-    tag: 'latest'
-    insecure: true
-    insecure_registries: [ "((registry_endpoint))" ]
-
 - name: stemcell
   type: s3
   source:
