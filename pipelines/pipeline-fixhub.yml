@@ -17,10 +17,10 @@ resource_types:
 - name: http-resource
   type: docker-image
   source:
-    repository: "harbor.elasticsky.cloud/library/jgriff/http-resource"
+    repository: "((registry_endpoint))/((registry_repo))/jgriff/http-resource"
     tag: 'latest'
     insecure: true
-    insecure_registries: [ "harbor.elasticsky.cloud" ]
+    insecure_registries: [ "((registry_endpoint))" ]
 
 # - name: http-resource
 #   type: docker-image
