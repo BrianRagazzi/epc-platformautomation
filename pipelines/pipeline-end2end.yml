@@ -730,6 +730,9 @@ jobs:
               
               echo "Creating space: $space in org: $org"
               cf create-space "$space" -o "$org"
+              cf set-space-role $LDAPUSER "$org" "$space" SpaceManager
+              cf set-space-role $LDAPUSER "$org" "$space" SpaceDeveloper
+              cf space-users "$org" "$space"
           done
           cf logout
 
