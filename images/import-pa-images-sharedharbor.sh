@@ -3,7 +3,7 @@
 set -e
 
 echo "Logging into Harbor..."
-if ! docker login -u admin -p VMware123! harbor.elasticsky.cloud; then
+if ! docker login -u admin -p VMware123! harbor.tnz-field-epc.lvn.broadcom.net; then
   echo "ERROR: Docker login failed."
   exit 1
 fi
@@ -38,20 +38,20 @@ if ! docker import http-resource-1.0.0.tar.gz jgriff/http-resource:latest; then
 fi
 
 echo "Tagging images..."
-docker tag platform-automation:5.3.1 harbor.elasticsky.cloud/library/platform-automation:5.3.1
-docker tag platauto-uaac:5.3.1 harbor.elasticsky.cloud/library/platauto-uaac:5.3.1
-docker tag jgriff/http-resource:latest harbor.elasticsky.cloud/library/jgriff/http-resource:latest
+docker tag platform-automation:5.3.1 harbor.tnz-field-epc.lvn.broadcom.net/library/platform-automation:5.3.1
+docker tag platauto-uaac:5.3.1 harbor.tnz-field-epc.lvn.broadcom.net/library/platauto-uaac:5.3.1
+docker tag jgriff/http-resource:latest harbor.tnz-field-epc.lvn.broadcom.net/library/jgriff/http-resource:latest
 
-docker tag harbor.elasticsky.cloud/library/platform-automation:5.3.1 harbor.elasticsky.cloud/library/platform-automation:latest
-docker tag harbor.elasticsky.cloud/library/platauto-uaac:5.3.1 harbor.elasticsky.cloud/library/platauto-uaac:latest
+docker tag harbor.tnz-field-epc.lvn.broadcom.net/library/platform-automation:5.3.1 harbor.tnz-field-epc.lvn.broadcom.net/library/platform-automation:latest
+docker tag harbor.tnz-field-epc.lvn.broadcom.net/library/platauto-uaac:5.3.1 harbor.tnz-field-epc.lvn.broadcom.net/library/platauto-uaac:latest
 
 echo "Pushing images to Harbor..."
 for image in \
-  "harbor.elasticsky.cloud/library/platform-automation:5.3.1" \
-  "harbor.elasticsky.cloud/library/platform-automation:latest" \
-  "harbor.elasticsky.cloud/library/platauto-uaac:5.3.1" \
-  "harbor.elasticsky.cloud/library/platauto-uaac:latest" \
-  "harbor.elasticsky.cloud/library/jgriff/http-resource:latest"
+  "harbor.tnz-field-epc.lvn.broadcom.net/library/platform-automation:5.3.1" \
+  "harbor.tnz-field-epc.lvn.broadcom.net/library/platform-automation:latest" \
+  "harbor.tnz-field-epc.lvn.broadcom.net/library/platauto-uaac:5.3.1" \
+  "harbor.tnz-field-epc.lvn.broadcom.net/library/platauto-uaac:latest" \
+  "harbor.tnz-field-epc.lvn.broadcom.net/library/jgriff/http-resource:latest"
 do
   if docker push "$image"; then
     echo "Pushed $image"
