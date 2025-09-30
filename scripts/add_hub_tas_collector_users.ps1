@@ -15,7 +15,7 @@
 param(
     [string]$OpsmanHost = "opsman.elasticsky.cloud",
     [string]$OpsmanUsername = "admin",
-    [string]$OpsmanPassword = "VMware123!",
+    [string]$OpsmanPassword = "",
     [string]$OpsmanSshKey = "C:\Users\Administrator\.ssh\id_rsa_tanzu",
     [string]$ClientName = "hub-tas-collector",
     [string]$ClientSecret = "hub-tas-collector"
