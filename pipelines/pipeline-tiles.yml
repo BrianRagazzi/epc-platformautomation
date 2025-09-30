@@ -153,10 +153,10 @@ resources:
   source:
     url: ((http_config_env))
 
-- name: emptystate
-  <<: *http_resource
-  source:
-    url: ((http_config_emptystate))
+# - name: emptystate
+#   <<: *http_resource
+#   source:
+#     url: ((http_config_emptystate))
 
 # - name: config-opsman
 #   <<: *http_resource
@@ -203,15 +203,15 @@ resources:
   source:
     url: ((http_config_hub_collector))
 
-- name: config-srt-otel-template
-  <<: *http_resource
-  source:
-    url: ((http_config_srt_otel_template))
+# - name: config-srt-otel-template
+#   <<: *http_resource
+#   source:
+#     url: ((http_config_srt_otel_template))
 
-- name: fixhub-script
-  <<: *http_resource
-  source:
-    url: ((http_config_fixhub_script))
+# - name: fixhub-script
+#   <<: *http_resource
+#   source:
+#     url: ((http_config_fixhub_script))
 
 groups:
 - name: cf-small-footprint
