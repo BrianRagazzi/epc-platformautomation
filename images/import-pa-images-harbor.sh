@@ -48,7 +48,9 @@ docker tag harbor.elasticsky.cloud/library/platauto-uaac:5.3.1 harbor.elasticsky
 echo "Pushing images to Harbor..."
 for image in \
   "harbor.elasticsky.cloud/library/platform-automation:5.3.1" \
+  "harbor.elasticsky.cloud/library/platform-automation:latest" \
   "harbor.elasticsky.cloud/library/platauto-uaac:5.3.1" \
+  "harbor.elasticsky.cloud/library/platauto-uaac:latest" \
   "harbor.elasticsky.cloud/library/jgriff/http-resource:latest"
 do
   if docker push "$image"; then
@@ -59,4 +61,7 @@ do
   fi
 done
 
-echo "All images processed successfully."
+echo "Cleaning up downloaded tar.gz files..."
+rm -f vsphere-platform-automation-image-5.3.1.tar.gz platauto-uaac-5.3.1.tar.gz http-resource-1.0.0.tar.gz
+
+echo "All images processed and local files cleaned up successfully."
