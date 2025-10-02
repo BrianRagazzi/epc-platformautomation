@@ -432,10 +432,12 @@ jobs:
         - -c
         - |
           set -eu
-
           echo "Connecting to $DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
-          command="find /opt/concourse/worker/volumes -name *pivotal* -type f -delete"
-          sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$command"
+          # Quote the pattern to avoid local glob expansion. Redirect remote stderr so permission
+          # denied messages don't cause the local script to fail. Use '|| true' so ssh returns 0
+          # even if find had non-fatal problems deleting some files.
+          remote_command="find /opt/concourse/worker/volumes -name '*pivotal*' -type f -delete 2>/dev/null || true"
+          sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$remote_command"
 
 - name: apply-changes-cf
   serial: true
@@ -620,10 +622,12 @@ jobs:
         - -c
         - |
           set -eu
-
           echo "Connecting to $DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
-          command="find /opt/concourse/worker/volumes -name *pivotal* -type f -delete"
-          sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$command"
+          # Quote the pattern to avoid local glob expansion. Redirect remote stderr so permission
+          # denied messages don't cause the local script to fail. Use '|| true' so ssh returns 0
+          # even if find had non-fatal problems deleting some files.
+          remote_command="find /opt/concourse/worker/volumes -name '*pivotal*' -type f -delete 2>/dev/null || true"
+          sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$remote_command"
 
 - name: apply-changes-postgres
   serial: true
@@ -808,10 +812,12 @@ jobs:
         - -c
         - |
           set -eu
-
           echo "Connecting to $DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
-          command="find /opt/concourse/worker/volumes -name *pivotal* -type f -delete"
-          sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$command"
+          # Quote the pattern to avoid local glob expansion. Redirect remote stderr so permission
+          # denied messages don't cause the local script to fail. Use '|| true' so ssh returns 0
+          # even if find had non-fatal problems deleting some files.
+          remote_command="find /opt/concourse/worker/volumes -name '*pivotal*' -type f -delete 2>/dev/null || true"
+          sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$remote_command"
 
 - name: apply-changes-genai
   serial: true
@@ -984,10 +990,12 @@ jobs:
         - -c
         - |
           set -eu
-
           echo "Connecting to $DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
-          command="find /opt/concourse/worker/volumes -name *pivotal* -type f -delete"
-          sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$command"
+          # Quote the pattern to avoid local glob expansion. Redirect remote stderr so permission
+          # denied messages don't cause the local script to fail. Use '|| true' so ssh returns 0
+          # even if find had non-fatal problems deleting some files.
+          remote_command="find /opt/concourse/worker/volumes -name '*pivotal*' -type f -delete 2>/dev/null || true"
+          sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$remote_command"
 
 - name: apply-changes-hub-collector
   serial: true
