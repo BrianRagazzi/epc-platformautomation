@@ -432,9 +432,6 @@ jobs:
         - -c
         - |
           set -eu
-          curl "$CONCOURSE/api/v1/cli?arch=amd64&platform=linux" -o fly
-          chmod +x ./fly
-          mv ./fly /usr/local/bin/
 
           echo "Connecting to $DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
           command="find /opt/concourse/worker/volumes -name *pivotal* -type f -delete"
@@ -623,9 +620,6 @@ jobs:
         - -c
         - |
           set -eu
-          curl "$CONCOURSE/api/v1/cli?arch=amd64&platform=linux" -o fly
-          chmod +x ./fly
-          mv ./fly /usr/local/bin/
 
           echo "Connecting to $DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
           command="find /opt/concourse/worker/volumes -name *pivotal* -type f -delete"
@@ -814,9 +808,6 @@ jobs:
         - -c
         - |
           set -eu
-          curl "$CONCOURSE/api/v1/cli?arch=amd64&platform=linux" -o fly
-          chmod +x ./fly
-          mv ./fly /usr/local/bin/
 
           echo "Connecting to $DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
           command="find /opt/concourse/worker/volumes -name *pivotal* -type f -delete"
@@ -993,9 +984,6 @@ jobs:
         - -c
         - |
           set -eu
-          curl ${CONCOURSE}/api/v1/cli?arch=amd64&platform=linux -o fly
-          chmod +x ./fly
-          mv ./fly /usr/local/bin/
 
           echo "Connecting to $DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
           command="find /opt/concourse/worker/volumes -name *pivotal* -type f -delete"
