@@ -214,7 +214,7 @@ resources:
     url: ((http_config_fixhub_script))
 
 groups:
-- name: foundation-end-2-end
+- name: foundation
   jobs:
   - start-core
   - install-opsman
