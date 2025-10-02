@@ -37,12 +37,21 @@ resources:
     bucket: binaries
     regexp: platform-automation-tasks-(.*).zip
 
+# - name: platform-automation-vsphere-image
+#   type: s3
+#   source:
+#     <<: *s3_credentials
+#     bucket: binaries
+#     regexp: vsphere-platform-automation-image-(.*).tar.gz
+
+# docker image resources
 - name: platform-automation-vsphere-image
-  type: s3
+  type: docker-image
   source:
-    <<: *s3_credentials
-    bucket: binaries
-    regexp: vsphere-platform-automation-image-(.*).tar.gz
+    repository: "((registry_endpoint))/((registry_repo))/platform-automation"
+    tag: 'latest'
+    insecure: true
+    insecure_registries: [ "((registry_endpoint))" ]
 
 # HTTP Resources
 - name: env
