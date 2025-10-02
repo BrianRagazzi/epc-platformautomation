@@ -432,7 +432,7 @@ jobs:
         - -c
         - |
           set -eu
-          curl ${CONCOURSE}/api/v1/cli?arch=amd64&platform=linux -o fly
+          curl "$CONCOURSE/api/v1/cli?arch=amd64&platform=linux" -o fly
           chmod +x ./fly
           mv ./fly /usr/local/bin/
 
@@ -623,7 +623,7 @@ jobs:
         - -c
         - |
           set -eu
-          curl ${CONCOURSE}/api/v1/cli?arch=amd64&platform=linux -o fly
+          curl "$CONCOURSE/api/v1/cli?arch=amd64&platform=linux" -o fly
           chmod +x ./fly
           mv ./fly /usr/local/bin/
 
@@ -814,7 +814,7 @@ jobs:
         - -c
         - |
           set -eu
-          curl ${CONCOURSE}/api/v1/cli?arch=amd64&platform=linux -o fly
+          curl "$CONCOURSE/api/v1/cli?arch=amd64&platform=linux" -o fly
           chmod +x ./fly
           mv ./fly /usr/local/bin/
 
