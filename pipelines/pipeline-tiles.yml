@@ -655,7 +655,7 @@ jobs:
       env: env
     params:
       ENV_FILE: body
-      SELECTIVE_DEPLOY_PRODUCTS: "postgres"
+      SELECTIVE_DEPLOY_PRODUCTS: "cf,postgres"
 
 - name: genai
   serial: false
@@ -845,7 +845,7 @@ jobs:
       env: env
     params:
       ENV_FILE: body
-      SELECTIVE_DEPLOY_PRODUCTS: "genai"
+      SELECTIVE_DEPLOY_PRODUCTS: "cf,genai"
 
 - name: hub-collector
   serial_groups: [ phase_two ]
@@ -1023,4 +1023,4 @@ jobs:
       env: env
     params:
       ENV_FILE: body
-      SELECTIVE_DEPLOY_PRODUCTS: "hub-tas-collector"
+      SELECTIVE_DEPLOY_PRODUCTS: "cf,hub-tas-collector"
