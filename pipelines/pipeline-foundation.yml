@@ -384,7 +384,7 @@ jobs:
     trigger: true
   - get: config-srt
   - get: srt-product
-    #trigger: true
+    trigger: true
   - get: stemcell
   - get: platform-automation-vsphere-image
     params:
