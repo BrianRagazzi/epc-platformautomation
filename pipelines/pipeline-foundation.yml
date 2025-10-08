@@ -1232,7 +1232,7 @@ jobs:
           syslog_private_key_pem=$(om --env env/"${ENV_FILE}" credentials -p hub-tas-collector -c .properties.syslog_mtls -t json -f private_key_pem)
           { echo "syslog-private-key-pem: |"; echo "$syslog_private_key_pem" | sed 's/^/  /'; } >> $filename
           # Updating config for cf/srt
-          om --env env/"${ENV_FILE}" configure-product -p cf -c config-srt-otel-template/body -l $filename
+          om --env env/"${ENV_FILE}" configure-product -c config-srt-otel-template/body -l $filename
 
 - name: apply-changes-cf-hub-collector
   serial: true
