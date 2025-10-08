@@ -1049,7 +1049,9 @@ jobs:
         - -c
         - |
           set -eu
-          gem install cf-uaac 
+          /usr/bin/gem install cf-uaac --no-document
+          # Set PATH to include gem bindir
+          export PATH="$(/usr/bin/gem environment gemdir)/bin:$PATH"
           # get opsman url:
           OPSMAN_URL=$(yq '.target' env/"${ENV_FILE}")
           OPSMAN_USER=$(yq '.username' env/"${ENV_FILE}")
@@ -1087,7 +1089,9 @@ jobs:
         - -c
         - |
           set -eu
-          gem install cf-uaac 
+          /usr/bin/gem install cf-uaac --no-document
+          # Set PATH to include gem bindir
+          export PATH="$(/usr/bin/gem environment gemdir)/bin:$PATH"
           OPSMAN_URL=$(yq '.target' env/"${ENV_FILE}")
           OPSMAN_USER=$(yq '.username' env/"${ENV_FILE}")
           OPSMAN_PASS=$(yq '.password' env/"${ENV_FILE}")
