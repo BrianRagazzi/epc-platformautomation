@@ -242,6 +242,7 @@ jobs:
   plan:
   - get: env
   - get: config-srt
+    trigger: true
   - get: srt-product
     trigger: true
   - get: stemcell
