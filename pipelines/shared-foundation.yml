@@ -283,6 +283,7 @@ groups:
   - scs
   - scg
   - sso
+  - mysql
 - name: update-cf-hub-integration
   jobs:
   - update-cf-following-hub-tas-collector
@@ -1036,6 +1037,56 @@ jobs:
         - -exc
         - |
           rm -rf sso-product/*
+
+- name: mysql
+  serial: false
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: mysql-product
+    trigger: true
+  - get: config-mysql
+  - get: env
+    passed: [ apply-changes-phase-one ]
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: mysql-product
+      config: config-mysql
+      env: env
+
+  - task: stage-product
+    <<: *stage_task
+    input_mapping:
+      product: mysql-product
+      env: env
+
+  - task: configure-product
+    <<: *configure_task
+    input_mapping:
+      config: config-mysql
+      env: env
+      #vars: interpolated-creds
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: mysql-product
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf mysql-product/*
 
 - name: hub-collector
   serial_groups: [ phase_two ]
