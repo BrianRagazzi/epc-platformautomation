@@ -175,6 +175,13 @@ resources:
     bucket: tiles
     regexp: Pivotal_Single_Sign-On_Service_(\d.*).pivotal
 
+- name: mysql-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: tiles
+    regexp: pivotal-mysql-(\d.*).pivotal
+
 # HTTP Resources
 - name: env
   <<: *http_resource
@@ -260,6 +267,11 @@ resources:
   <<: *http_resource
   source:
     url: ((http_config_sso))
+
+- name: config-mysql
+  <<: *http_resource
+  source:
+    url: ((http_config_mysql))
 
 groups:
 - name: foundation
