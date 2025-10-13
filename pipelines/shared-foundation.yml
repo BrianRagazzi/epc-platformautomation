@@ -1,0 +1,1484 @@
+---
+# YAML anchors
+s3_credentials: &s3_credentials
+  access_key_id: ((s3_access_key_id))
+  secret_access_key: ((s3_secret_access_key))
+  endpoint: ((s3_endpoint))
+  region_name: ((s3_region_name))
+  skip_ssl_verification: true
+  use_path_style: true
+
+http_resource: &http_resource
+  type: http-resource
+  source:
+    insecure: true
+
+upload_task: &upload_task
+  image: platform-automation-vsphere-image
+  file: platform-automation-tasks/tasks/upload-product.yml
+  params:
+    ENV_FILE: body
+
+stage_task: &stage_task
+  image: platform-automation-vsphere-image
+  file: platform-automation-tasks/tasks/stage-product.yml
+  params:
+    ENV_FILE: body
+
+configure_task: &configure_task
+  image: platform-automation-vsphere-image
+  file: platform-automation-tasks/tasks/configure-product.yml
+  params:
+    CONFIG_FILE: body
+    ENV_FILE: body
+
+resource_types:
+- name: http-resource
+  type: docker-image
+  source:
+    repository: "((registry_endpoint))/((registry_repo))/jgriff/http-resource"
+    tag: 'latest'
+    insecure: true
+    insecure_registries: [ "((registry_endpoint))" ]
+
+# - name: http-resource
+#   type: docker-image
+#   source:
+#     repository: jgriff/http-resource
+#     # this works when provided with a username and password:
+
+resources:
+# registry-image Resources
+# Note:  local harbor uses self-signed cert
+# consider docker-image with insecure_registries
+# docker-image is decremented in favor of registry-image
+# - name: platform-automation-custom-image
+#   type: registry-image
+#   source:
+#     repository: ((registry_endpoint))/((registry_repo))/platauto-uaac
+#     tag: ((platauto_image_tag))
+#     insecure: true
+
+# docker-image resources
+- name: platform-automation-vsphere-image
+  type: docker-image
+  source:
+    repository: "((registry_endpoint))/((registry_repo))/platform-automation"
+    tag: 'latest'
+    insecure: true
+    insecure_registries: [ "((registry_endpoint))" ]
+
+- name: platform-automation-custom-image
+  type: docker-image
+  source:
+    repository: "((registry_endpoint))/((registry_repo))/platauto-uaac"
+    tag: 'latest'
+    insecure: true
+    insecure_registries: [ "((registry_endpoint))" ]
+
+# s3 Resources
+- name: platform-automation-tasks
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: binaries
+    regexp: platform-automation-tasks-(.*).zip
+
+# - name: platform-automation-vsphere-image
+#   type: s3
+#   source:
+#     <<: *s3_credentials
+#     bucket: binaries
+#     regexp: vsphere-platform-automation-image-(.*).tar.gz
+
+# - name: platform-automation-custom-image
+#   type: s3
+#   source:
+#     <<: *s3_credentials
+#     bucket: binaries
+#     regexp: platauto-uaac-(.*).tar.gz
+
+- name: stemcell
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: stemcells
+    regexp: bosh-stemcell-(.*)-vsphere.esxi-ubuntu-jammy-go_agent.tgz
+
+- name: opsman-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: opsmgr
+    regexp: ops-manager-vsphere-(.*).ova
+
+- name: srt-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: tiles
+    regexp: srt-(.*).pivotal
+
+- name: genai-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: tiles
+    regexp: genai-(.*).pivotal
+
+- name: postgres-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: tiles
+    regexp: postgres-(.*).pivotal
+
+# - name: hub-product
+#   type: s3
+#   source:
+#     <<: *s3_credentials
+#     bucket: tiles
+#     regexp: tanzu-hub-(\d.*).pivotal
+
+- name: hub-collector-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: tiles
+    regexp: hub-tas-collector-(\d.*).pivotal
+
+- name: valkey-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: tiles
+    regexp: p-valkey-(\d.*).pivotal
+
+- name: scs-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: tiles
+    regexp: p_spring-cloud-services-(\d.*).pivotal
+
+- name: scg-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: tiles
+    regexp: p_spring-cloud-gateway-service-(\d.*).pivotal
+
+- name: sso-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: tiles
+    regexp: Pivotal_Single_Sign-On_Service_(\d.*).pivotal
+
+# HTTP Resources
+- name: env
+  <<: *http_resource
+  source:
+    url: ((http_config_env))
+
+- name: emptystate
+  <<: *http_resource
+  source:
+    url: ((http_config_emptystate))
+
+- name: config-opsman
+  <<: *http_resource
+  source:
+    url: ((http_config_opsman))
+
+- name: opsman-ssh-key
+  <<: *http_resource
+  source:
+    url: ((http_opsman_ssh_key))
+
+- name: config-director
+  <<: *http_resource
+  source:
+    url: ((http_config_director))
+
+- name: config-director-auth
+  <<: *http_resource
+  source:
+    url: ((http_config_director_auth))
+
+- name: config-genai
+  <<: *http_resource
+  source:
+    url: ((http_config_genai))
+
+- name: config-postgres
+  <<: *http_resource
+  source:
+    url: ((http_config_postgres))
+
+- name: config-srt
+  <<: *http_resource
+  source:
+    url: ((http_config_srt))
+
+# - name: config-hub
+#   <<: *http_resource
+#   source:
+#     url: ((http_config_hub))
+
+- name: config-hub-collector
+  <<: *http_resource
+  source:
+    url: ((http_config_hub_collector))
+
+- name: config-srt-otel-template
+  <<: *http_resource
+  source:
+    url: ((http_config_srt_otel_template))
+
+- name: fixhub-script
+  <<: *http_resource
+  source:
+    url: ((http_config_fixhub_script))
+
+- name: config-valkey
+  <<: *http_resource
+  source:
+    url: ((http_config_valkey))
+
+- name: config-scs
+  <<: *http_resource
+  source:
+    url: ((http_config_scs))
+
+- name: config-scg
+  <<: *http_resource
+  source:
+    url: ((http_config_scg))
+
+- name: config-sso
+  <<: *http_resource
+  source:
+    url: ((http_config_sso))
+
+groups:
+- name: foundation
+  jobs:
+  - start-core
+  - install-opsman
+  - apply-changes-director
+  - cf-small-footprint
+  - postgres
+  - apply-changes-phase-one
+  - post-install-tasks-cf
+  - genai
+  #- hub
+  - hub-collector
+  - apply-changes-phase-two
+  - add-hub-collector-clients
+  - opsman-tasks
+  - free-space-on-harbor-vm-phase-one
+  - free-space-on-harbor-vm-phase-two
+  - valkey
+  - scs
+  - scg
+  - sso
+- name: update-cf-hub-integration
+  jobs:
+  - update-cf-following-hub-tas-collector
+  - update-cf-hub-integration
+  - apply-changes-cf-hub-collector
+- name: teardown
+  jobs:
+  - destroy-installation
+
+jobs:
+- name: start-core
+  plan:
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: env
+  - task: validate-config
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "Starting Foundation Core deployment phase"
+
+- name: install-opsman
+  serial: true
+  serial_groups: [ core ]
+  build_log_retention:
+    builds: 2
+  plan:
+  - get: opsman-product
+  - get: config-opsman
+  - get: config-director
+  - get: config-director-auth
+  - get: emptystate
+  - get: stemcell
+  - get: env
+    passed: [ start-core ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: create-vm
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/create-vm.yml
+    input_mapping:
+      state: emptystate
+      config: config-opsman
+      image: opsman-product
+    params:
+      STATE_FILE: state.yml
+      OPSMAN_CONFIG_FILE: body #((foundation))/config/opsman.yml #prepends config/
+      #VARS_FILES: |
+      #  vars/((foundation))/vars/opsman-defaults.yml vars/((foundation))/vars/opsman-vars.yml
+
+  - task: wait-a-few
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          sleep 180
+
+  - task: configure-authentication
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/configure-authentication.yml
+    attempts: 20
+    timeout: 15m
+    input_mapping:
+      env: env
+      config: config-director-auth
+    params:
+      ENV_FILE: body
+      AUTH_CONFIG_FILE: body
+
+  - task: configure-director
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/configure-director.yml
+    input_mapping:
+      config: config-director
+      env: env
+    params:
+      ENV_FILE: body
+      DIRECTOR_CONFIG_FILE: body #relative to config
+      #VARS_FILES: vars/((foundation))/vars/director-defaults.yml vars/((foundation))/vars/director-vars.yml
+
+  - task: upload-stemcell
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/upload-stemcell.yml
+    input_mapping:
+      env: env
+      stemcell: stemcell
+    params:
+      ENV_FILE: body
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: opsman-product
+      - name: stemcell
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf opsman-product/*
+          rm -rf stemcell/*
+
+- name: apply-changes-director
+  build_log_retention:
+    builds: 2
+  plan:
+  - get: env
+    passed: [ install-opsman ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: apply-director-changes
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/apply-director-changes.yml
+    input_mapping:
+      env: env
+    params:
+      ENV_FILE: body
+
+- name: cf-small-footprint
+  build_log_retention:
+    builds: 2
+  plan:
+  - get: env
+    passed: [ apply-changes-director ]
+    trigger: true
+  - get: config-srt
+  - get: srt-product
+    trigger: true
+  - get: stemcell
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: srt-product
+      config: config-srt
+      env: env
+
+  - task: stage-product
+    <<: *stage_task
+    input_mapping:
+      product: srt-product
+      env: env
+
+  - task: upload-stemcell
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/upload-stemcell.yml
+    input_mapping:
+      env: env
+      stemcell: stemcell
+    params:
+      ENV_FILE: body
+
+  - task: create-certificate-vars
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      params:
+        DOMAINS: ((certificate_domains))
+        ENV_FILE: body
+      outputs:
+      - name: vars
+      run:
+        path: sh
+        args:
+        - -c
+        - |
+          echo "generating cert for ${DOMAINS}"
+          om --env env/body generate-certificate -d "${DOMAINS}" > /tmp/certificate.json
+          om interpolate -c /tmp/certificate.json --path /certificate > /tmp/wildcard-cert.pem
+          om interpolate -c /tmp/certificate.json --path /key > /tmp/wildcard-key.pem
+          echo "wildcard-cert-pem: |" > vars/certificate-vars.yml
+          sed 's/^/  /' /tmp/wildcard-cert.pem >> vars/certificate-vars.yml
+          echo "wildcard-key-pem: |" >> vars/certificate-vars.yml
+          sed 's/^/  /' /tmp/wildcard-key.pem >> vars/certificate-vars.yml
+
+  - task: configure-product
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/configure-product.yml
+    params:
+      CONFIG_FILE: body
+      ENV_FILE: body
+      VARS_FILES: vars/certificate-vars.yml
+    input_mapping:
+      config: config-srt
+      env: env
+      vars: vars
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: srt-product
+      - name: stemcell
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf srt-product/*
+          rm -rf stemcell/*
+
+- name: postgres
+  serial: false
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: postgres-product
+    trigger: true
+  - get: config-postgres
+  - get: env
+    passed: [ apply-changes-director ]
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: postgres-product
+      config: config-postgres
+      env: env
+
+  - task: stage-product
+    <<: *stage_task
+    input_mapping:
+      product: postgres-product
+      env: env
+
+  - task: configure-product
+    <<: *configure_task
+    input_mapping:
+      config: config-postgres
+      env: env
+      #vars: interpolated-creds
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: postgres-product
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf postgres-product/*
+
+- name: free-space-on-harbor-vm-phase-one
+  plan:
+  - get: env
+    passed: [ cf-small-footprint, postgres ]
+    trigger: true
+  - get: platform-automation-custom-image
+    #params:
+    #  unpack: true
+  - task: clear-resource-cache
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      params:
+        CONCOURSE: ((concourse_url))
+        CONCOURSE_USER: "admin"
+        CONCOURSE_PASS: ((s3_secret_access_key))
+        CONCOURSE_TARGET: "ci"
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          #!/bin/bash
+          # Clears cache for resources ending with 'product' that have 'succeeded' status
+
+          echo "Starting Concourse resource cache cleanup..."
+          # Check if fly CLI exists, if not download it
+          if ! command -v fly &> /dev/null; then
+              echo "fly CLI not found, downloading from Concourse..."
+              curl "$CONCOURSE/api/v1/cli?arch=amd64&platform=linux" -o fly
+              if [ $? -ne 0 ]; then
+                  echo "Error: Failed to download fly CLI"
+                  exit 1
+              fi
+              chmod +x fly
+              echo "fly CLI downloaded successfully"
+              FLY_CMD="./fly"
+          else
+              echo "fly CLI found in PATH"
+              FLY_CMD="fly"
+          fi
+          # Step 1: Login to Concourse
+          echo "Logging in to Concourse at $CONCOURSE..."
+          $FLY_CMD -t "$CONCOURSE_TARGET" login -c "$CONCOURSE" -u "$CONCOURSE_USER" -p "$CONCOURSE_PASS"
+          if [ $? -ne 0 ]; then
+              echo "Error: Failed to login to Concourse"
+              exit 1
+          fi
+          echo "Login successful!"
+          # Step 2: Get all pipelines
+          echo "Enumerating pipelines..."
+          pipelines=$($FLY_CMD -t "$CONCOURSE_TARGET" pipelines --json | jq -r '.[].name')
+          if [ -z "$pipelines" ]; then
+              echo "No pipelines found"
+              exit 0
+          fi
+          echo "Found pipelines: $pipelines"
+          # Step 3 & 4: For each pipeline, get resources and clear cache for matching ones
+          for pipeline in $pipelines; do
+              echo ""
+              echo "Processing pipeline: $pipeline"
+              # Get resources for this pipeline
+              resources=$($FLY_CMD -t "$CONCOURSE_TARGET" resources -p "$pipeline" --json)
+              if [ $? -ne 0 ]; then
+                  echo "Warning: Could not get resources for pipeline $pipeline, skipping..."
+                  continue
+              fi
+              # Filter resources that end with 'product' and have 'succeeded' status
+              matching_resources=$(echo "$resources" | jq -r '.[] | select(.name | endswith("product")) | select(.build.status == "succeeded") | .name')
+              if [ -z "$matching_resources" ]; then
+                  echo "  No matching resources found in pipeline $pipeline"
+                  continue
+              fi
+              echo "  Found matching resources in $pipeline:"
+              for resource in $matching_resources; do
+                  echo "    - $resource"
+              done
+              # Clear cache for each matching resource
+              for resource in $matching_resources; do
+                  echo "  Clearing cache for $pipeline/$resource..."
+                  echo "y" | $FLY_CMD -t "$CONCOURSE_TARGET" clear-resource-cache -r "$pipeline/$resource"
+                  if [ $? -eq 0 ]; then
+                      echo "    ✓ Successfully cleared cache for $pipeline/$resource"
+                  else
+                      echo "    ✗ Failed to clear cache for $pipeline/$resource"
+                  fi
+              done
+          done
+          echo "Cache cleanup completed!"
+
+  - task: delete-pivotal-files-from-worker
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      params:
+        DOCKER_HOST: ((docker_host))
+        WORKER_NAME: concourse-worker-1
+        DOCKER_PASS: ((s3_secret_access_key))
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          echo "Connecting to $DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
+          # Quote the pattern to avoid local glob expansion. Redirect remote stderr so permission
+          # denied messages don't cause the local script to fail. Use '|| true' so ssh returns 0
+          # even if find had non-fatal problems deleting some files.
+          remote_command="find /opt/concourse/worker/volumes -name '*pivotal*' -type f -delete 2>/dev/null || true"
+          sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$remote_command"
+
+- name: apply-changes-phase-one
+  serial: true
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: env
+    passed: [ free-space-on-harbor-vm-phase-one ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-custom-image
+    #params:
+    #  unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: apply-product-changes
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/apply-changes.yml
+    input_mapping:
+      env: env
+    params:
+      ENV_FILE: body
+      SELECTIVE_DEPLOY_PRODUCTS: "cf,postgres"
+
+- name: post-install-tasks-cf
+  plan:
+  - get: env
+    passed: [ apply-changes-phase-one ]
+    trigger: true
+  - get: platform-automation-custom-image
+    #params:
+    #  unpack: true
+
+  - task: add-ldap-users-to-new-org
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      params:
+        LDAPUSER: ((ldap_user))
+        NEWORGS: ((new_orgs))
+        NEWSPACES: ((new_spaces))
+        ENV_FILE: body
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          CF_GUID=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/deployed/products" | \
+            jq -r '.[] | .installation_name' | grep cf- | tail -1)
+          echo "CF GUID: $CF_GUID"
+          SYS_DOMAIN=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/staged/products/${CF_GUID}/properties" | \
+            jq --raw-output '.[] | .[".cloud_controller.system_domain"].value')
+          echo "System Domain: $SYS_DOMAIN"
+          ADMIN_PW=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/deployed/products/${CF_GUID}/credentials/.uaa.admin_credentials" | \
+            jq -r '.[] | .value.password')
+
+          ADMIN_CLIENT=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/deployed/products/${CF_GUID}/credentials/.uaa.admin_client_credentials" | \
+            jq -r '.[] | .value.password')
+          echo "logging in as admin"
+          cf login -a https://api.$SYS_DOMAIN -u admin -p $ADMIN_PW --skip-ssl-validation -o system -s system
+          echo "creating user $LDAPUSER"
+          cf create-user $LDAPUSER --origin ldap
+          echo "creating unlimited org quota"
+          cf create-org-quota unlimited -m -1 -r -1 -s -1
+          # cf create-org $NEWORG -q unlimited
+          # Create organizations
+          echo "Creating organizations..."
+          IFS=',' read -ra ORG_ARRAY <<< "$NEWORGS"
+          for org in "${ORG_ARRAY[@]}"; do
+              # Trim whitespace
+              org=$(echo "$org" | xargs)
+              echo "Creating org: $org"
+              cf create-org "$org" -q unlimited
+              cf set-org-role $LDAPUSER $org OrgManager
+              cf set-org-role $LDAPUSER $org BillingManager
+              cf set-org-role $LDAPUSER $org OrgAuditor
+          done
+          # Create Spaces
+          IFS=',' read -ra SPACE_ARRAY <<< "$NEWSPACES"
+          for space_entry in "${SPACE_ARRAY[@]}"; do
+              # Trim whitespace
+              space_entry=$(echo "$space_entry" | xargs)
+              
+              # Split org/space format
+              IFS='/' read -ra SPACE_PARTS <<< "$space_entry"
+              org="${SPACE_PARTS[0]}"
+              space="${SPACE_PARTS[1]}"
+              
+              echo "Creating space: $space in org: $org"
+              cf create-space "$space" -o "$org"
+              cf set-space-role $LDAPUSER "$org" "$space" SpaceManager
+              cf set-space-role $LDAPUSER "$org" "$space" SpaceDeveloper
+              cf space-users "$org" "$space"
+          done
+          cf logout
+
+- name: genai
+  serial: false
+  serial_groups: [ phase_two ]
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: genai-product
+    trigger: true
+  - get: config-genai
+  - get: env
+    passed: [ apply-changes-phase-one ]
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: genai-product
+      config: config-genai
+      env: env
+
+  - task: stage-product
+    <<: *stage_task
+    input_mapping:
+      product: genai-product
+      env: env
+
+  - task: configure-product
+    <<: *configure_task
+    input_mapping:
+      config: config-genai
+      env: env
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: genai-product
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf genai-product/*
+
+- name: valkey
+  serial: false
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: valkey-product
+    trigger: true
+  - get: config-valkey
+  - get: env
+    passed: [ apply-changes-phase-one ]
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: valkey-product
+      config: config-valkey
+      env: env
+
+  - task: stage-product
+    <<: *stage_task
+    input_mapping:
+      product: valkey-product
+      env: env
+
+  - task: configure-product
+    <<: *configure_task
+    input_mapping:
+      config: config-valkey
+      env: env
+      #vars: interpolated-creds
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: valkey-product
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf valkey-product/*
+
+- name: scs
+  serial: false
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: scs-product
+    trigger: true
+  - get: config-scs
+  - get: env
+    passed: [ apply-changes-phase-one ]
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: scs-product
+      config: config-scs
+      env: env
+
+  - task: stage-product
+    <<: *stage_task
+    input_mapping:
+      product: scs-product
+      env: env
+
+  - task: configure-product
+    <<: *configure_task
+    input_mapping:
+      config: config-scs
+      env: env
+      #vars: interpolated-creds
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: scs-product
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf scs-product/*          
+
+- name: scg
+  serial: false
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: scg-product
+    trigger: true
+  - get: config-scg
+  - get: env
+    passed: [ apply-changes-phase-one ]
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: scg-product
+      config: config-scg
+      env: env
+
+  - task: stage-product
+    <<: *stage_task
+    input_mapping:
+      product: scg-product
+      env: env
+
+  - task: configure-product
+    <<: *configure_task
+    input_mapping:
+      config: config-scg
+      env: env
+      #vars: interpolated-creds
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: scg-product
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf scg-product/*
+
+- name: sso
+  serial: false
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: sso-product
+    trigger: true
+  - get: config-sso
+  - get: env
+    passed: [ apply-changes-phase-one ]
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: sso-product
+      config: config-sso
+      env: env
+
+  - task: stage-product
+    <<: *stage_task
+    input_mapping:
+      product: sso-product
+      env: env
+
+  - task: configure-product
+    <<: *configure_task
+    input_mapping:
+      config: config-sso
+      env: env
+      #vars: interpolated-creds
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: sso-product
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf sso-product/*
+
+- name: hub-collector
+  serial_groups: [ phase_two ]
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: env
+    passed: [ apply-changes-phase-one ]
+    trigger: true
+  - get: config-hub-collector
+  - get: hub-collector-product
+  - get: stemcell
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: hub-collector-product
+      config: config-hub-collector
+      env: env
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: hub-collector-product
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf hub-collector-product/*
+
+- name: free-space-on-harbor-vm-phase-two
+  plan:
+  - get: env
+    passed: [ genai, hub-collector ]
+    trigger: true
+  - get: platform-automation-custom-image
+    #params:
+    #  unpack: true
+  - task: clear-resource-cache
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      params:
+        CONCOURSE: ((concourse_url))
+        CONCOURSE_USER: "admin"
+        CONCOURSE_PASS: ((s3_secret_access_key))
+        CONCOURSE_TARGET: "ci"
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          #!/bin/bash
+          # Clears cache for resources ending with 'product' that have 'succeeded' status
+
+          echo "Starting Concourse resource cache cleanup..."
+          # Check if fly CLI exists, if not download it
+          if ! command -v fly &> /dev/null; then
+              echo "fly CLI not found, downloading from Concourse..."
+              curl "$CONCOURSE/api/v1/cli?arch=amd64&platform=linux" -o fly
+              if [ $? -ne 0 ]; then
+                  echo "Error: Failed to download fly CLI"
+                  exit 1
+              fi
+              chmod +x fly
+              echo "fly CLI downloaded successfully"
+              FLY_CMD="./fly"
+          else
+              echo "fly CLI found in PATH"
+              FLY_CMD="fly"
+          fi
+          # Step 1: Login to Concourse
+          echo "Logging in to Concourse at $CONCOURSE..."
+          $FLY_CMD -t "$CONCOURSE_TARGET" login -c "$CONCOURSE" -u "$CONCOURSE_USER" -p "$CONCOURSE_PASS"
+          if [ $? -ne 0 ]; then
+              echo "Error: Failed to login to Concourse"
+              exit 1
+          fi
+          echo "Login successful!"
+          # Step 2: Get all pipelines
+          echo "Enumerating pipelines..."
+          pipelines=$($FLY_CMD -t "$CONCOURSE_TARGET" pipelines --json | jq -r '.[].name')
+          if [ -z "$pipelines" ]; then
+              echo "No pipelines found"
+              exit 0
+          fi
+          echo "Found pipelines: $pipelines"
+          # Step 3 & 4: For each pipeline, get resources and clear cache for matching ones
+          for pipeline in $pipelines; do
+              echo ""
+              echo "Processing pipeline: $pipeline"
+              # Get resources for this pipeline
+              resources=$($FLY_CMD -t "$CONCOURSE_TARGET" resources -p "$pipeline" --json)
+              if [ $? -ne 0 ]; then
+                  echo "Warning: Could not get resources for pipeline $pipeline, skipping..."
+                  continue
+              fi
+              # Filter resources that end with 'product' and have 'succeeded' status
+              matching_resources=$(echo "$resources" | jq -r '.[] | select(.name | endswith("product")) | select(.build.status == "succeeded") | .name')
+              if [ -z "$matching_resources" ]; then
+                  echo "  No matching resources found in pipeline $pipeline"
+                  continue
+              fi
+              echo "  Found matching resources in $pipeline:"
+              for resource in $matching_resources; do
+                  echo "    - $resource"
+              done
+              # Clear cache for each matching resource
+              for resource in $matching_resources; do
+                  echo "  Clearing cache for $pipeline/$resource..."
+                  echo "y" | $FLY_CMD -t "$CONCOURSE_TARGET" clear-resource-cache -r "$pipeline/$resource"
+                  if [ $? -eq 0 ]; then
+                      echo "    ✓ Successfully cleared cache for $pipeline/$resource"
+                  else
+                      echo "    ✗ Failed to clear cache for $pipeline/$resource"
+                  fi
+              done
+          done
+          echo "Cache cleanup completed!"
+
+  - task: delete-pivotal-files-from-worker
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      params:
+        DOCKER_HOST: ((docker_host))
+        WORKER_NAME: concourse-worker-1
+        DOCKER_PASS: ((s3_secret_access_key))
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          echo "Connecting to $DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
+          # Quote the pattern to avoid local glob expansion. Redirect remote stderr so permission
+          # denied messages don't cause the local script to fail. Use '|| true' so ssh returns 0
+          # even if find had non-fatal problems deleting some files.
+          remote_command="find /opt/concourse/worker/volumes -name '*pivotal*' -type f -delete 2>/dev/null || true"
+          sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$remote_command"
+
+- name: apply-changes-phase-two
+  serial: true
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: env
+    passed: [ free-space-on-harbor-vm-phase-two ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-custom-image
+    #params:
+    #  unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: apply-changes-phase-two
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/apply-changes.yml
+    attempts: 4
+    input_mapping:
+      env: env
+    params:
+      ENV_FILE: body
+      SELECTIVE_DEPLOY_PRODUCTS: "genai"
+
+- name: add-hub-collector-clients
+  plan:
+  - get: env
+    passed: [ apply-changes-phase-two ]
+    trigger: true
+  - get: platform-automation-custom-image
+    #params:
+    #  unpack: true
+  - task: add-opsman-hub-collector #repeat for Director
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      params:
+        HUB_CLIENT_NAME: ((hub_client_name))
+        HUB_CLIENT_PASSWORD: ((hub_client_password))
+        ENV_FILE: body
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          /usr/bin/gem install cf-uaac --no-document
+          # Set PATH to include gem bindir
+          export PATH="$(/usr/bin/gem environment gemdir)/bin:$PATH"
+          # get opsman url:
+          OPSMAN_URL=$(yq '.target' env/"${ENV_FILE}")
+          OPSMAN_USER=$(yq '.username' env/"${ENV_FILE}")
+          OPSMAN_PASS=$(yq '.password' env/"${ENV_FILE}")
+          # Set uaa target to opsman/uaa --skip-ssl-validation
+          echo "setting Opsman UAA Target"
+          uaac target $OPSMAN_URL/uaa --skip-ssl-validation
+          uaac token owner get opsman "$OPSMAN_USER" -p "$OPSMAN_PASS" -s ""
+
+          echo "checking uaac clients for $HUB_CLIENT_NAME"
+          client_exists=$(uaac clients | grep $HUB_CLIENT_NAME || true)
+          if [ -n "$client_exists" ]; then
+            echo "Client $HUB_CLIENT_NAME already exists.  Updating secret"
+            uaac secret set "$HUB_CLIENT_NAME" -s "$HUB_CLIENT_PASSWORD"
+          else
+            echo "Creating new client $HUB_CLIENT_NAME"
+            uaac client add $HUB_CLIENT_NAME --secret "$HUB_CLIENT_PASSWORD" --authorized_grant_types client_credentials,refresh_token --authorities scim.read
+          fi
+          echo "listing OpsMan UAA Clients to verify"
+          uaac clients | grep -A 5 -B 5 "$HUB_CLIENT_NAME" || echo "[WARN] Client not found in Opsman UAA listing"
+
+  - task: add-director-hub-collector
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      params:
+        HUB_CLIENT_NAME: ((hub_client_name))
+        HUB_CLIENT_PASSWORD: ((hub_client_password))
+        ENV_FILE: body
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          /usr/bin/gem install cf-uaac --no-document
+          # Set PATH to include gem bindir
+          export PATH="$(/usr/bin/gem environment gemdir)/bin:$PATH"
+          OPSMAN_URL=$(yq '.target' env/"${ENV_FILE}")
+          OPSMAN_USER=$(yq '.username' env/"${ENV_FILE}")
+          OPSMAN_PASS=$(yq '.password' env/"${ENV_FILE}")
+          # get BOSH creds from opsman via curl
+          BOSH_CREDS=$(om --env env/"${ENV_FILE}" curl --silent --path /api/v0/deployed/director/credentials/bosh_commandline_credentials  | jq -r '.credential')
+          UAA_CLIENT_ID=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CLIENT=[^ ]*' | cut -d'=' -f2)
+          # Parse BOSH_CLIENT_SECRET
+          UAA_CLIENT_SECRET=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CLIENT_SECRET=[^ ]*' | cut -d'=' -f2)
+          # Parse BOSH_ENVIRONMENT (Director IP)
+          BOSH_DIRECTOR_IP=$(echo "$BOSH_CREDS" | grep -o 'BOSH_ENVIRONMENT=[^ ]*' | cut -d'=' -f2)
+          echo "BOSH Director IP: $BOSH_DIRECTOR_IP"
+          # set uaac target to bosh director:8443 --skip-ssl-validation
+          uaac target $BOSH_DIRECTOR_IP:8443 --skip-ssl-validation
+          uaac token client get $UAA_CLIENT_ID --secret $UAA_CLIENT_SECRET
+
+          # check for client, create if it doesn't exists.
+          client_exists=$(uaac clients | grep $HUB_CLIENT_NAME || true)
+          if [ -n "$client_exists" ]; then
+            echo "Client $HUB_CLIENT_NAME already exists.  Updating secret"
+            uaac secret set "$HUB_CLIENT_NAME" -s "$HUB_CLIENT_PASSWORD"
+          else
+            echo "Creating new client $HUB_CLIENT_NAME"
+            uaac client add $HUB_CLIENT_NAME --secret "$HUB_CLIENT_PASSWORD" --authorized_grant_types client_credentials,refresh_token --authorities bosh.read --scope bosh.read
+          fi
+          echo "listing BOSH Director UAA Clients to verify"
+          uaac clients | grep -A 5 -B 5 "$HUB_CLIENT_NAME" || echo "[WARN] Client not found in BOSH UAA listing"
+
+- name: opsman-tasks
+  serial: true
+  serial_groups: [ core ]
+  build_log_retention:
+    builds: 2
+  plan:
+  - get: env
+    passed: [ apply-changes-phase-two ]
+    trigger: true
+  - get: opsman-ssh-key
+  - get: fixhub-script
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: commands
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      - name: opsman-ssh-key
+      - name: fixhub-script
+      params:
+        ENV_FILE: body
+        FIXHUB_SCRIPT_URL: ((http_config_fixhub_script))
+
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          OPSMAN_SSH_KEY="./opsman-ssh-key/body"
+          OPSMAN_HOSTNAME=$(grep "^target:" env/"${ENV_FILE}" | sed "s/^target: *['\"]*//" | sed "s/['\"]* *$//" | sed "s|https*://||")
+          chmod 600 $OPSMAN_SSH_KEY
+          command="sudo apt-get update && sudo apt-get install nano jq wget -y"
+          ssh -i "$OPSMAN_SSH_KEY" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null ubuntu@"$OPSMAN_HOSTNAME" "$command"
+
+          BOSH_CREDS=$(om --env env/"${ENV_FILE}" curl --silent --path /api/v0/deployed/director/credentials/bosh_commandline_credentials  | jq -r '.credential')
+          BOSH_CLIENT=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CLIENT=[^ ]*' | cut -d'=' -f2)
+          BOSH_CLIENT_SECRET=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CLIENT_SECRET=[^ ]*' | cut -d'=' -f2)
+          BOSH_CA_CERT=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CA_CERT=[^ ]*' | cut -d'=' -f2)
+          BOSH_ENVIRONMENT=$(echo "$BOSH_CREDS" | grep -o 'BOSH_ENVIRONMENT=[^ ]*' | cut -d'=' -f2)
+
+          command="echo 'export BOSH_CLIENT=$BOSH_CLIENT' >> ~/.profile && echo 'export BOSH_CLIENT_SECRET=$BOSH_CLIENT_SECRET' >> ~/.profile && echo 'export BOSH_CA_CERT=$BOSH_CA_CERT' >> ~/.profile && echo 'export BOSH_ENVIRONMENT=$BOSH_ENVIRONMENT' >> ~/.profile"
+          ssh -i "$OPSMAN_SSH_KEY" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null ubuntu@"$OPSMAN_HOSTNAME" "$command"
+
+          scriptname=$(basename $FIXHUB_SCRIPT_URL)
+          command="wget -O ~/$scriptname $FIXHUB_SCRIPT_URL && chmod +x ~/$scriptname"
+          ssh -i "$OPSMAN_SSH_KEY" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null ubuntu@"$OPSMAN_HOSTNAME" "$command"
+
+- name: update-cf-following-hub-tas-collector
+  plan:
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: env
+    #passed: [ apply-changes-phase-one ]
+  - task: validate-config
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "Starting update of cf for Hub TAS Collector"
+
+- name: update-cf-hub-integration
+  plan:
+  - get: env
+    trigger: true
+    passed: [ update-cf-following-hub-tas-collector ]
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: config-srt-otel-template
+  - task: update-cf-otel-config
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      - name: config-srt-otel-template
+      params:
+        ENV_FILE: body
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          #!/bin/bash
+          filename=cf-otel-config.yml
+          touch $filename
+          ca_pem=$(om --env env/"${ENV_FILE}" certificate-authority --cert-pem)
+          { echo "opsman-ca: |"; echo "$ca_pem" | sed 's/^/  /'; } >> $filename
+          cert_pem=$(om --env env/"${ENV_FILE}" credentials -p hub-tas-collector -c .hub_tas_agent.open_telemetry_agent_mtls -t json -f cert_pem)
+          { echo "collector-cert-pem: |"; echo "$cert_pem" | sed 's/^/  /'; } >> $filename
+          private_key_pem=$(om --env env/"${ENV_FILE}" credentials -p hub-tas-collector -c .hub_tas_agent.open_telemetry_agent_mtls -t json -f private_key_pem)
+          { echo "collector-private-key-pem: |"; echo "$private_key_pem" | sed 's/^/  /'; } >> $filename
+          syslog_cert_pem=$(om --env env/"${ENV_FILE}" credentials -p hub-tas-collector -c .properties.syslog_mtls -t json -f cert_pem)
+          { echo "syslog-cert-pem: |"; echo "$syslog_cert_pem" | sed 's/^/  /'; } >> $filename
+          syslog_private_key_pem=$(om --env env/"${ENV_FILE}" credentials -p hub-tas-collector -c .properties.syslog_mtls -t json -f private_key_pem)
+          { echo "syslog-private-key-pem: |"; echo "$syslog_private_key_pem" | sed 's/^/  /'; } >> $filename
+          # Updating config for cf/srt
+          om --env env/"${ENV_FILE}" configure-product -c config-srt-otel-template/body -l $filename
+
+- name: apply-changes-cf-hub-collector
+  serial: true
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: env
+    passed: [ update-cf-hub-integration ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: apply-changes-cf
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/apply-changes.yml
+    attempts: 4
+    input_mapping:
+      env: env
+    params:
+      ENV_FILE: body
+      SELECTIVE_DEPLOY_PRODUCTS: "cf,hub-tas-collector"
+
+- name: destroy-installation
+  serial: true
+  serial_groups: [ teardown ]
+  plan:
+  - get: env
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: delete-installation
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/delete-installation.yml
+    input_mapping:
+      env: env
+    params:
+      ENV_FILE: body
+  # - task: delete-opsman-vm
+  #   image: platform-automation-vsphere-image
+  #   file: platform-automation-tasks/tasks/delete-vm.yml
+  #   input_mapping:
+  #     state: state
+  #     config: config
+  #     vars: interpolated-creds
+  #     env: interpolated-creds
+  #   params:
+  #     STATE_FILE: ((foundation))/state/state.yml
+  #     OPSMAN_CONFIG_FILE: ((foundation))/config/opsman.yml
+  #     VARS_FILES: |
+  #       vars/((foundation))/vars/opsman-defaults.yml
+  #       vars/((foundation))/vars/opsman-vars.yml
