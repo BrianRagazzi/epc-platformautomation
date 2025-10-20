@@ -34,14 +34,14 @@ resources:
   type: s3
   source:
     <<: *s3_credentials
-    bucket: binaries
+    bucket: ((s3_bucket_binaries))
     regexp: platform-automation-tasks-(.*).zip
 
 # - name: platform-automation-vsphere-image
 #   type: s3
 #   source:
 #     <<: *s3_credentials
-#     bucket: binaries
+#     bucket: ((s3_bucket_binaries))
 #     regexp: vsphere-platform-automation-image-(.*).tar.gz
 
 # docker image resources

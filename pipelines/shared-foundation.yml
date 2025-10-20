@@ -81,105 +81,105 @@ resources:
   type: s3
   source:
     <<: *s3_credentials
-    bucket: binaries
+    bucket: ((s3_bucket_binaries))
     regexp: platform-automation-tasks-(.*).zip
 
 # - name: platform-automation-vsphere-image
 #   type: s3
 #   source:
 #     <<: *s3_credentials
-#     bucket: binaries
+#     bucket: ((s3_bucket_binaries))
 #     regexp: vsphere-platform-automation-image-(.*).tar.gz
 
 # - name: platform-automation-custom-image
 #   type: s3
 #   source:
 #     <<: *s3_credentials
-#     bucket: binaries
+#     bucket: ((s3_bucket_binaries))
 #     regexp: platauto-uaac-(.*).tar.gz
 
 - name: stemcell
   type: s3
   source:
     <<: *s3_credentials
-    bucket: stemcells
+    bucket: ((s3_bucket_stemcells))
     regexp: bosh-stemcell-(.*)-vsphere.esxi-ubuntu-jammy-go_agent.tgz
 
 - name: opsman-product
   type: s3
   source:
     <<: *s3_credentials
-    bucket: opsmgr
+    bucket: ((s3_bucket_opsmgr))
     regexp: ops-manager-vsphere-(.*).ova
 
 - name: srt-product
   type: s3
   source:
     <<: *s3_credentials
-    bucket: tiles
+    bucket: ((s3_bucket_tiles))
     regexp: srt-(.*).pivotal
 
 - name: genai-product
   type: s3
   source:
     <<: *s3_credentials
-    bucket: tiles
+    bucket: ((s3_bucket_tiles))
     regexp: genai-(.*).pivotal
 
 - name: postgres-product
   type: s3
   source:
     <<: *s3_credentials
-    bucket: tiles
+    bucket: ((s3_bucket_tiles))
     regexp: postgres-(.*).pivotal
 
 # - name: hub-product
 #   type: s3
 #   source:
 #     <<: *s3_credentials
-#     bucket: tiles
+#     bucket: ((s3_bucket_tiles))
 #     regexp: tanzu-hub-(\d.*).pivotal
 
 - name: hub-collector-product
   type: s3
   source:
     <<: *s3_credentials
-    bucket: tiles
+    bucket: ((s3_bucket_tiles))
     regexp: hub-tas-collector-(\d.*).pivotal
 
 - name: valkey-product
   type: s3
   source:
     <<: *s3_credentials
-    bucket: tiles
+    bucket: ((s3_bucket_tiles))
     regexp: p-valkey-(\d.*).pivotal
 
 - name: scs-product
   type: s3
   source:
     <<: *s3_credentials
-    bucket: tiles
+    bucket: ((s3_bucket_tiles))
     regexp: p_spring-cloud-services-(\d.*).pivotal
 
 - name: scg-product
   type: s3
   source:
     <<: *s3_credentials
-    bucket: tiles
+    bucket: ((s3_bucket_tiles))
     regexp: p_spring-cloud-gateway-service-(\d.*).pivotal
 
 - name: sso-product
   type: s3
   source:
     <<: *s3_credentials
-    bucket: tiles
+    bucket: ((s3_bucket_tiles))
     regexp: Pivotal_Single_Sign-On_Service_(\d.*).pivotal
 
 - name: mysql-product
   type: s3
   source:
     <<: *s3_credentials
-    bucket: tiles
+    bucket: ((s3_bucket_tiles))
     regexp: pivotal-mysql-(\d.*).pivotal
 
 # HTTP Resources
@@ -289,8 +289,8 @@ groups:
   - apply-changes-phase-two
   - add-hub-collector-clients
   - opsman-tasks
-  - free-space-on-harbor-vm-phase-one
-  - free-space-on-harbor-vm-phase-two
+  - free-space-on-concourse-vm-phase-one
+  - free-space-on-concourse-vm-phase-two
   - valkey
   - scs
   - scg
@@ -582,7 +582,7 @@ jobs:
         - |
           rm -rf postgres-product/*
 
-- name: free-space-on-harbor-vm-phase-one
+- name: free-space-on-concourse-vm-phase-one
   plan:
   - get: env
     passed: [ cf-small-footprint, postgres ]
@@ -700,7 +700,7 @@ jobs:
     builds: 1
   plan:
   - get: env
-    passed: [ free-space-on-harbor-vm-phase-one ]
+    passed: [ free-space-on-concourse-vm-phase-one ]
     trigger: true
   - get: platform-automation-vsphere-image
     params:
@@ -1138,7 +1138,7 @@ jobs:
         - |
           rm -rf hub-collector-product/*
 
-- name: free-space-on-harbor-vm-phase-two
+- name: free-space-on-concourse-vm-phase-two
   plan:
   - get: env
     passed: [ genai, hub-collector ]
@@ -1256,7 +1256,7 @@ jobs:
     builds: 1
   plan:
   - get: env
-    passed: [ free-space-on-harbor-vm-phase-two ]
+    passed: [ free-space-on-concourse-vm-phase-two ]
     trigger: true
   - get: platform-automation-vsphere-image
     params:

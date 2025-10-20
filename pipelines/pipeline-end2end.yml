@@ -81,70 +81,70 @@ resources:
   type: s3
   source:
     <<: *s3_credentials
-    bucket: binaries
+    bucket: ((s3_bucket_binaries))
     regexp: platform-automation-tasks-(.*).zip
 
 # - name: platform-automation-vsphere-image
 #   type: s3
 #   source:
 #     <<: *s3_credentials
-#     bucket: binaries
+#     bucket: ((s3_bucket_binaries))
 #     regexp: vsphere-platform-automation-image-(.*).tar.gz
 
 # - name: platform-automation-custom-image
 #   type: s3
 #   source:
 #     <<: *s3_credentials
-#     bucket: binaries
+#     bucket: ((s3_bucket_binaries))
 #     regexp: platauto-uaac-(.*).tar.gz
 
 - name: stemcell
   type: s3
   source:
     <<: *s3_credentials
-    bucket: stemcells
+    bucket: ((s3_bucket_stemcells))
     regexp: bosh-stemcell-(.*)-vsphere.esxi-ubuntu-jammy-go_agent.tgz
 
 - name: opsman-product
   type: s3
   source:
     <<: *s3_credentials
-    bucket: opsmgr
+    bucket: ((s3_bucket_opsmgr))
     regexp: ops-manager-vsphere-(.*).ova
 
 - name: srt-product
   type: s3
   source:
     <<: *s3_credentials
-    bucket: tiles
+    bucket: ((s3_bucket_tiles))
     regexp: srt-(.*).pivotal
 
 - name: genai-product
   type: s3
   source:
     <<: *s3_credentials
-    bucket: tiles
+    bucket: ((s3_bucket_tiles))
     regexp: genai-(.*).pivotal
 
 - name: postgres-product
   type: s3
   source:
     <<: *s3_credentials
-    bucket: tiles
+    bucket: ((s3_bucket_tiles))
     regexp: postgres-(.*).pivotal
 
 - name: hub-product
   type: s3
   source:
     <<: *s3_credentials
-    bucket: tiles
+    bucket: ((s3_bucket_tiles))
     regexp: tanzu-hub-(\d.*).pivotal
 
 - name: hub-collector-product
   type: s3
   source:
     <<: *s3_credentials
-    bucket: tiles
+    bucket: ((s3_bucket_tiles))
     regexp: hub-tas-collector-(\d.*).pivotal
 
 # HTTP Resources
