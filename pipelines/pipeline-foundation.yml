@@ -229,8 +229,8 @@ groups:
   - apply-changes-phase-two
   - add-hub-collector-clients
   - opsman-tasks
-  - free-space-on-harbor-vm-phase-one
-  - free-space-on-harbor-vm-phase-two
+  - free-space-on-worker-vm-phase-one
+  - free-space-on-worker-vm-phase-two
 - name: update-cf-hub-integration
   jobs:
   - update-cf-following-hub-tas-collector
@@ -517,7 +517,7 @@ jobs:
         - |
           rm -rf postgres-product/*
 
-- name: free-space-on-harbor-vm-phase-one
+- name: free-space-on-worker-vm-phase-one
   plan:
   - get: env
     passed: [ cf-small-footprint, postgres ]
@@ -635,7 +635,7 @@ jobs:
     builds: 1
   plan:
   - get: env
-    passed: [ free-space-on-harbor-vm-phase-one ]
+    passed: [ free-space-on-worker-vm-phase-one ]
     trigger: true
   - get: platform-automation-vsphere-image
     params:
@@ -885,7 +885,7 @@ jobs:
         - |
           rm -rf hub-collector-product/*
 
-- name: free-space-on-harbor-vm-phase-two
+- name: free-space-on-worker-vm-phase-two
   plan:
   - get: env
     passed: [ genai, hub-collector ]
@@ -1003,7 +1003,7 @@ jobs:
     builds: 1
   plan:
   - get: env
-    passed: [ free-space-on-harbor-vm-phase-two ]
+    passed: [ free-space-on-worker-vm-phase-two ]
     trigger: true
   - get: platform-automation-vsphere-image
     params:
