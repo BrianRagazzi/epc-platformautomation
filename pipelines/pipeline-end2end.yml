@@ -1070,7 +1070,7 @@ jobs:
             uaac secret set "$HUB_CLIENT_NAME" -s "$HUB_CLIENT_PASSWORD"
           else
             echo "Creating new client $HUB_CLIENT_NAME"
-            uaac client add $HUB_CLIENT_NAME --secret "$HUB_CLIENT_PASSWORD" --authorized_grant_types client_credentials,refresh_token --authorities scim.read
+            uaac client add $HUB_CLIENT_NAME --secret "$HUB_CLIENT_PASSWORD" --authorized_grant_types client_credentials,refresh_token --authorities opsman.admin,opsman.full_control,opsman.restricted_control,opsman.full_view,opsman.restricted_view,scim.read
           fi
           echo "listing OpsMan UAA Clients to verify"
           uaac clients | grep -A 5 -B 5 "$HUB_CLIENT_NAME" || echo "[WARN] Client not found in Opsman UAA listing"
