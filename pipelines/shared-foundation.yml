@@ -145,7 +145,7 @@ resources:
   source:
     <<: *s3_credentials
     bucket: ((s3_bucket_tiles))
-    regexp: hub-tas-collector-(\d.*).pivotal
+    regexp: platform-services-(\d.*).pivotal #hub-tas-collector-(\d.*).pivotal
 
 - name: valkey-product
   type: s3

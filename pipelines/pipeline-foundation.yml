@@ -145,7 +145,7 @@ resources:
   source:
     <<: *s3_credentials
     bucket: ((s3_bucket_tiles))
-    regexp: hub-tas-collector-(\d.*).pivotal
+    regexp: platform-services-(\d.*).pivotal #hub-tas-collector-(\d.*).pivotal
 
 # HTTP Resources
 - name: env
@@ -734,6 +734,55 @@ jobs:
               cf space-users "$org" "$space"
           done
           cf logout
+
+  - task: add-tanzu-platform-admin-to-foundation
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      params:
+        TP_USER: ((tanzu_platform_admin_username:tanzu_platform_admin))
+        TP_PASS: ((tanzu_platform_admin_password:whatever))
+        ENV_FILE: body
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eux
+          /usr/bin/gem install cf-uaac --no-document
+          # Set PATH to include gem bindir
+          export PATH="$(/usr/bin/gem environment gemdir)/bin:$PATH"
+          CF_GUID=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/deployed/products" | \
+            jq -r '.[] | .installation_name' | grep cf- | tail -1)
+          echo "CF GUID: $CF_GUID"
+
+          SYS_DOMAIN=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/staged/products/${CF_GUID}/properties" | \
+            jq --raw-output '.[] | .[".cloud_controller.system_domain"].value')
+          echo "System Domain: $SYS_DOMAIN"
+
+          ADMIN_CLIENT=$(om --env env/"${ENV_FILE}" curl --silent --path \
+            "/api/v0/deployed/products/${CF_GUID}/credentials/.uaa.admin_client_credentials" | \
+            jq -r '.[] | .value.password')
+
+          echo "connecting UAAC"
+          uaac target uaa.$SYS_DOMAIN --skip-ssl-validation
+          uaac token client get admin -s $ADMIN_CLIENT
+
+          uaac users | grep -q "$TP_USER"
+          USER_EXISTS=$?
+          if [ $USER_EXISTS -eq 0 ]; then
+            echo "$TP_USER Exists, skipping creation"
+          else
+            uaac user add $TP_USER -p "$TP_PASS" --emails "$TP_USER"
+            uaac member add cloud_controller.admin $TP_USER
+            uaac member add uaa.admin $TP_USER
+            uaac member add scim.read $TP_USER
+            uaac member add scim.write $TP_USER
+          fi
 
 - name: genai
   serial: false
