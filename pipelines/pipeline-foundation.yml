@@ -945,8 +945,8 @@ jobs:
         args:
         - -c
         - |
-          set -eu
           #!/bin/bash
+          set -eu
 
           # Variables for the script
           # VARS_FILE=vars/platform-services-collector-vars.yml
@@ -1097,7 +1097,7 @@ jobs:
             oauth_client_id: ${oauth_client_id}
             oauth_client_secret: ${oauth_client_secret}
             hub_ca_cert: |
-              $(echo "$ca_bundle" | sed 's/^/  /')
+              $(sed 's/^/  /' <<< "$ca_bundle")
           EOF
 
           cat $VARS_FILE         
