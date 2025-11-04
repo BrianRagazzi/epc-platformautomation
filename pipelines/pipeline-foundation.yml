@@ -220,7 +220,7 @@ groups:
   - install-opsman
   - apply-changes-director
   - cf-small-footprint
-  - postgres
+  #- postgres
   - apply-changes-phase-one
   - post-install-tasks-cf
   #- genai
