@@ -742,8 +742,8 @@ jobs:
       inputs:
       - name: env
       params:
-        TP_USER: ((tanzu_platform_admin_username:tanzu_platform_admin))
-        TP_PASS: ((tanzu_platform_admin_password:whatever))
+        TP_USER: ((tanzu_platform_admin_username))
+        TP_PASS: ((tanzu_platform_admin_password))
         ENV_FILE: body
       run:
         path: bash
