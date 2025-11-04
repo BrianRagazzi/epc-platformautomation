@@ -29,3 +29,6 @@ docker_host: docker.mydomain.com
 
 hub_client_name: hub-tas-collector
 hub_client_password: hub-tas-collector
+tanzu_platform_admin_username: tanzu_platform_admin
+tanzu_platform_admin_password: whatever
+hub_url: https://hub.mydomain.com
