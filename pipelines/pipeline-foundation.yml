@@ -651,7 +651,7 @@ jobs:
       env: env
     params:
       ENV_FILE: body
-      SELECTIVE_DEPLOY_PRODUCTS: "cf,postgres"
+      SELECTIVE_DEPLOY_PRODUCTS: "cf" #"cf,postgres"
 
 - name: post-install-tasks-cf
   plan:
