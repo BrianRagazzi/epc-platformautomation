@@ -904,6 +904,7 @@ jobs:
   - get: config-hub-collector
   - get: hub-collector-product
   - get: stemcell
+  - get: platform-automation-custom-image
   - get: platform-automation-vsphere-image
     params:
       unpack: true
