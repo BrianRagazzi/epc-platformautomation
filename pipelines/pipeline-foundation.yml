@@ -1047,28 +1047,23 @@ jobs:
           echo "Extracted csp_org_id: $csp_org_id"
           echo "Extracted ingestion_url: $ingestion_url"
           echo "Extracted frpc_remote_port: $frpc_remote_port"
-          echo "Extracted ca_bundle: $ca_bundle"
+          # echo "Extracted ca_bundle: $ca_bundle"
 
           # Validate required variables
           echo "Validating required variables..."
           MISSING_VARS=()
-
           if [ -z "$collector_id" ] || [ "$collector_id" = "null" ]; then
               MISSING_VARS+=("collector_id")
           fi
-
           if [ -z "$oauth_client_id" ] || [ "$oauth_client_id" = "null" ]; then
               MISSING_VARS+=("oauth_client_id")
           fi
-
           if [ -z "$oauth_client_secret" ] || [ "$oauth_client_secret" = "null" ]; then
               MISSING_VARS+=("oauth_client_secret")
           fi
-
           if [ -z "$foundation_id" ] || [ "$foundation_id" = "null" ]; then
               MISSING_VARS+=("foundation_id")
           fi
-
           if [ -z "$csp_org_id" ] || [ "$csp_org_id" = "null" ]; then
               MISSING_VARS+=("csp_org_id")
           fi
@@ -1076,20 +1071,16 @@ jobs:
           if [ -z "$ingestion_url" ] || [ "$ingestion_url" = "null" ]; then
               MISSING_VARS+=("ingestion_url")
           fi
-
           if [ -z "$frpc_remote_port" ] || [ "$frpc_remote_port" = "null" ]; then
               MISSING_VARS+=("frpc_remote_port")
           fi
-
           if [ ${#MISSING_VARS[@]} -ne 0 ]; then
               echo "Error: The following required variables are empty or null:"
               printf '%s\n' "${MISSING_VARS[@]}"
               echo "GraphQL Response: $GRAPHQL_RESPONSE"
               exit 1
           fi
-
           echo "All required variables validated successfully."
-
 
           # Create the YAML file using a heredoc
 
@@ -1100,8 +1091,8 @@ jobs:
             foundation_id: ${foundation_id}
             csp_org_id: ${csp_org_id}
             ingestion_url: ${ingestion_url}
-            opsman_uaa_admin_username: "${HUB_CLIENT_NAME:platform-services-client}"
-            opsman_uaa_admin_password: "${HUB_CLIENT_PASSWORD:platform-services-client}"
+            opsman_uaa_admin_username: "${HUB_CLIENT_NAME}"
+            opsman_uaa_admin_password: "${HUB_CLIENT_PASSWORD}"
             frpc_remote_port: ${frpc_remote_port}
             oauth_client_id: ${oauth_client_id}
             oauth_client_secret: ${oauth_client_secret}
