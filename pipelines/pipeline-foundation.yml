@@ -1037,7 +1037,7 @@ jobs:
           ca_bundle=$(jq -r '.data.managementEndpointMutation.attachSelfManagedManagementEndpointCollector.deploymentProperties[] | select(.name=="caBundle").value' <<< "$GRAPHQL_RESPONSE")
           # bosh_director_certificate="$(yq eval '.properties-configuration.security_configuration.trusted_certificates' /tmp/director.yml)"
           # hub_ca_certificate="$(echo -e "$bosh_director_certificate" | sed 's/^/      /')"
-          echo $ca_bundle > vars/ca_bundle.pem
+          printf '%s\n' "$ca_bundle" > vars/ca_bundle.pem
 
           echo "Extracted collector_id: $collector_id"
           echo "Extracted (unused) access_key: $access_key"
