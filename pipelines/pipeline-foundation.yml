@@ -1264,7 +1264,7 @@ jobs:
       env: env
     params:
       ENV_FILE: body
-      SELECTIVE_DEPLOY_PRODUCTS: "genai"
+      SELECTIVE_DEPLOY_PRODUCTS: "hub-tas-collector" #"genai"
 
 - name: add-hub-collector-clients
   plan:
