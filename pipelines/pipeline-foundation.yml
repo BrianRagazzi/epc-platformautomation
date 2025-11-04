@@ -1027,7 +1027,7 @@ jobs:
 
           # Extract variables using jq
           collector_id=$(jq -r '.data.managementEndpointMutation.attachSelfManagedManagementEndpointCollector.id' <<< "$GRAPHQL_RESPONSE")
-          # access_key=$(jq -r '.data.managementEndpointMutation.attachSelfManagedManagementEndpointCollector.deploymentProperties[] | select(.name=="access-key").value' <<< "$GRAPHQL_RESPONSE")
+          access_key=$(jq -r '.data.managementEndpointMutation.attachSelfManagedManagementEndpointCollector.deploymentProperties[] | select(.name=="access-key").value' <<< "$GRAPHQL_RESPONSE")
           foundation_id=$(jq -r '.data.managementEndpointMutation.attachSelfManagedManagementEndpointCollector.deploymentProperties[] | select(.name=="cluster-cloud-account-id").value' <<< "$GRAPHQL_RESPONSE")
           csp_org_id=$(jq -r '.data.managementEndpointMutation.attachSelfManagedManagementEndpointCollector.deploymentProperties[] | select(.name=="org-id").value' <<< "$GRAPHQL_RESPONSE")
           ingestion_url=$(jq -r '.data.managementEndpointMutation.attachSelfManagedManagementEndpointCollector.deploymentProperties[] | select(.name=="lemans-gateway-base-url").value' <<< "$GRAPHQL_RESPONSE")
