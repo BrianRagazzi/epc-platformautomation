@@ -223,7 +223,7 @@ groups:
   - postgres
   - apply-changes-phase-one
   - post-install-tasks-cf
-  - genai
+  #- genai
   #- hub
   - hub-collector
   - apply-changes-phase-two
@@ -467,55 +467,55 @@ jobs:
           rm -rf srt-product/*
           rm -rf stemcell/*
 
-- name: postgres
-  serial: false
-  build_log_retention:
-    builds: 1
-  plan:
-  - get: postgres-product
-    trigger: true
-  - get: config-postgres
-  - get: env
-    passed: [ apply-changes-director ]
-  - get: platform-automation-vsphere-image
-    params:
-      unpack: true
-  - get: platform-automation-tasks
-    params:
-      unpack: true
+# - name: postgres
+#   serial: false
+#   build_log_retention:
+#     builds: 1
+#   plan:
+#   - get: postgres-product
+#     trigger: true
+#   - get: config-postgres
+#   - get: env
+#     passed: [ apply-changes-director ]
+#   - get: platform-automation-vsphere-image
+#     params:
+#       unpack: true
+#   - get: platform-automation-tasks
+#     params:
+#       unpack: true
 
-  - task: upload-product
-    <<: *upload_task
-    input_mapping:
-      product: postgres-product
-      config: config-postgres
-      env: env
+#   - task: upload-product
+#     <<: *upload_task
+#     input_mapping:
+#       product: postgres-product
+#       config: config-postgres
+#       env: env
 
-  - task: stage-product
-    <<: *stage_task
-    input_mapping:
-      product: postgres-product
-      env: env
+#   - task: stage-product
+#     <<: *stage_task
+#     input_mapping:
+#       product: postgres-product
+#       env: env
 
-  - task: configure-product
-    <<: *configure_task
-    input_mapping:
-      config: config-postgres
-      env: env
-      #vars: interpolated-creds
+#   - task: configure-product
+#     <<: *configure_task
+#     input_mapping:
+#       config: config-postgres
+#       env: env
+#       #vars: interpolated-creds
 
-  - task: cleanup
-    image: platform-automation-vsphere-image
-    config:
-      platform: linux
-      inputs:
-      - name: postgres-product
-      run:
-        path: sh
-        args:
-        - -exc
-        - |
-          rm -rf postgres-product/*
+#   - task: cleanup
+#     image: platform-automation-vsphere-image
+#     config:
+#       platform: linux
+#       inputs:
+#       - name: postgres-product
+#       run:
+#         path: sh
+#         args:
+#         - -exc
+#         - |
+#           rm -rf postgres-product/*
 
 - name: free-space-on-worker-vm-phase-one
   plan:
@@ -784,55 +784,55 @@ jobs:
             uaac member add scim.write $TP_USER
           fi
 
-- name: genai
-  serial: false
-  serial_groups: [ phase_two ]
-  build_log_retention:
-    builds: 1
-  plan:
-  - get: genai-product
-    trigger: true
-  - get: config-genai
-  - get: env
-    passed: [ apply-changes-phase-one ]
-  - get: platform-automation-vsphere-image
-    params:
-      unpack: true
-  - get: platform-automation-tasks
-    params:
-      unpack: true
+# - name: genai
+#   serial: false
+#   serial_groups: [ phase_two ]
+#   build_log_retention:
+#     builds: 1
+#   plan:
+#   - get: genai-product
+#     trigger: true
+#   - get: config-genai
+#   - get: env
+#     passed: [ apply-changes-phase-one ]
+#   - get: platform-automation-vsphere-image
+#     params:
+#       unpack: true
+#   - get: platform-automation-tasks
+#     params:
+#       unpack: true
 
-  - task: upload-product
-    <<: *upload_task
-    input_mapping:
-      product: genai-product
-      config: config-genai
-      env: env
+#   - task: upload-product
+#     <<: *upload_task
+#     input_mapping:
+#       product: genai-product
+#       config: config-genai
+#       env: env
 
-  - task: stage-product
-    <<: *stage_task
-    input_mapping:
-      product: genai-product
-      env: env
+#   - task: stage-product
+#     <<: *stage_task
+#     input_mapping:
+#       product: genai-product
+#       env: env
 
-  - task: configure-product
-    <<: *configure_task
-    input_mapping:
-      config: config-genai
-      env: env
+#   - task: configure-product
+#     <<: *configure_task
+#     input_mapping:
+#       config: config-genai
+#       env: env
 
-  - task: cleanup
-    image: platform-automation-vsphere-image
-    config:
-      platform: linux
-      inputs:
-      - name: genai-product
-      run:
-        path: sh
-        args:
-        - -exc
-        - |
-          rm -rf genai-product/*
+#   - task: cleanup
+#     image: platform-automation-vsphere-image
+#     config:
+#       platform: linux
+#       inputs:
+#       - name: genai-product
+#       run:
+#         path: sh
+#         args:
+#         - -exc
+#         - |
+#           rm -rf genai-product/*
 
 # - name: hub
 #   serial_groups: [ phase_two ]
@@ -920,6 +920,210 @@ jobs:
       product: hub-collector-product
       config: config-hub-collector
       env: env
+
+  - task: stage-product
+    <<: *stage_task
+    input_mapping:
+      product: hub-collector-product
+      env: env
+
+  - task: get-attachment-settings
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      inputs:
+      - name: env
+      params:
+        HUB_URL: ((hub_url))
+        OM_PASSWORD: ((tanzu_platform_admin_password)) # connect to OpsMan
+        HUB_CLIENT_NAME: ((hub_client_name))
+        HUB_CLIENT_PASSWORD: ((hub_client_password))
+        ENV_FILE: body
+        VARS_FILE: vars/platform-services-collector-vars.yml
+      outputs:
+      - name: vars
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          #!/bin/bash
+
+          # Variables for the script
+          # VARS_FILE=vars/platform-services-collector-vars.yml
+          trap "rm -f '${VARS_FILE}'" RETURN
+          AUTH_TOKEN_URL="${HUB_URL}/csp/gateway/am/api/auth/token"
+          GRAPHQL_URL="${HUB_URL}/hub/graphql"
+          USER_NAME="tanzu_platform_admin"
+          #local COLLECTOR_NAME="services-tile-foundation"
+          ENV_ID=$(curl -s https://fileshare.tnz-field-epc.lvn.broadcom.net/info.asp | jq -r '.env_id')
+          COLLECTOR_NAME="EPC-env-$ENV_ID"
+          AUTH_TOKEN_PAYLOAD="client_id=tp_app&grant_type=password&username=${USER_NAME}&password=${OM_PASSWORD}"
+          TOKEN_RESPONSE="" 
+          HTTP_STATUS="" 
+          AUTH_TOKEN="" 
+          GRAPHQL_DATA="" 
+          GRAPHQL_RESPONSE=""
+
+          echo "Attempting to retrieve authorization token from: $AUTH_TOKEN_URL"
+          ATTEMPT=1
+          while [ $ATTEMPT -le 3 ]; do
+              TOKEN_RESPONSE=$(curl -s -k --location "$AUTH_TOKEN_URL" -d "$AUTH_TOKEN_PAYLOAD" -w "%{http_code}")
+              HTTP_STATUS="${TOKEN_RESPONSE: -3}"
+
+              if [ "$HTTP_STATUS" = "200" ]; then
+                  TOKEN_RESPONSE="${TOKEN_RESPONSE%???}" # Remove status code from body
+                  AUTH_TOKEN=$(jq -r '.access_token' <<< "$TOKEN_RESPONSE")
+                  if [ -n "$AUTH_TOKEN" ] && [ "$AUTH_TOKEN" != "null" ]; then
+                      echo "Successfully retrieved token on attempt $ATTEMPT."
+                      break
+                  fi
+              fi
+
+              echo "Attempt $ATTEMPT failed with status ${HTTP_STATUS}. Retrying in 5 seconds..."
+              sleep 5
+              ATTEMPT=$((ATTEMPT + 1))
+          done
+
+          if [ -z "$AUTH_TOKEN" ] || [ "$AUTH_TOKEN" == "null" ]; then
+              echo "ERROR: Failed to retrieve authorization token after 3 attempts." >&2
+              echo "Final Response: ${TOKEN_RESPONSE}" >&2
+              return 1
+          fi
+
+          echo "Executing GraphQL query to create collector '${COLLECTOR_NAME}'..."
+          # Using a heredoc for the GraphQL data is much cleaner and avoids escaping issues.
+          GRAPHQL_DATA=$(cat <<EOF
+          {
+            "operationName": "attachTasCollector",
+            "variables": {
+              "name": "${COLLECTOR_NAME}",
+              "collectorType": "TAS"
+            },
+            "query": "mutation attachTasCollector(\$name: String!, \$collectorType: ManagementEndpointCollectorType) { managementEndpointMutation { attachSelfManagedManagementEndpointCollector(input: {collectorName: \$name, collectorType: \$collectorType}) { id deploymentInstall deploymentProperties { name value __typename } managementEndpoint { managementEndpointId endpointName __typename } managementEndpointCollectorCredentials { properties { clientId clientSecret __typename } __typename } __typename } __typename } }"
+          }
+          EOF
+          )
+          GRAPHQL_RESPONSE=$(curl -s -k -w "%{http_code}" "$GRAPHQL_URL" \
+            -H 'accept: application/json' \
+            -H "authorization: Bearer $AUTH_TOKEN" \
+            -H 'content-type: application/json' \
+            -H "origin: ${HUB_URL}" \
+            --data-raw "$GRAPHQL_DATA")
+
+          HTTP_STATUS="${GRAPHQL_RESPONSE: -3}"
+          GRAPHQL_RESPONSE="${GRAPHQL_RESPONSE%???}"
+
+          if [ "$HTTP_STATUS" != "200" ]; then
+              echo "ERROR: GraphQL request failed with status code $HTTP_STATUS" >&2
+              echo "Response: $GRAPHQL_RESPONSE" >&2
+              return 1
+          fi
+          echo "GraphQL query successful."
+
+          # echo "Getting staged director config"
+          # om --env env/"${ENV_FILE}" staged-director-config > /tmp/director.yml
+          # TARGET_URL="$HUB_URL"
+          # CERT_CHAIN=$(echo | openssl s_client -showcerts -servername ${TARGET_URL/https:\/\//} -connect ${TARGET_URL/https:\/\//}:443 2>/dev/null | sed -n '/BEGIN CERTIFICATE/,/END CERTIFICATE/p')
+
+          # Extract variables using jq
+          collector_id=$(jq -r '.data.managementEndpointMutation.attachSelfManagedManagementEndpointCollector.id' <<< "$GRAPHQL_RESPONSE")
+          # access_key=$(jq -r '.data.managementEndpointMutation.attachSelfManagedManagementEndpointCollector.deploymentProperties[] | select(.name=="access-key").value' <<< "$GRAPHQL_RESPONSE")
+          foundation_id=$(jq -r '.data.managementEndpointMutation.attachSelfManagedManagementEndpointCollector.deploymentProperties[] | select(.name=="cluster-cloud-account-id").value' <<< "$GRAPHQL_RESPONSE")
+          csp_org_id=$(jq -r '.data.managementEndpointMutation.attachSelfManagedManagementEndpointCollector.deploymentProperties[] | select(.name=="org-id").value' <<< "$GRAPHQL_RESPONSE")
+          ingestion_url=$(jq -r '.data.managementEndpointMutation.attachSelfManagedManagementEndpointCollector.deploymentProperties[] | select(.name=="lemans-gateway-base-url").value' <<< "$GRAPHQL_RESPONSE")
+          frpc_remote_port=$(jq -r '.data.managementEndpointMutation.attachSelfManagedManagementEndpointCollector.deploymentProperties[] | select(.name=="tunnel-remote-port").value' <<< "$GRAPHQL_RESPONSE")
+          oauth_client_id=$(jq -r '.data.managementEndpointMutation.attachSelfManagedManagementEndpointCollector.deploymentProperties[] | select(.name=="oauth-app-id").value' <<< "$GRAPHQL_RESPONSE")
+          oauth_client_secret=$(jq -r '.data.managementEndpointMutation.attachSelfManagedManagementEndpointCollector.deploymentProperties[] | select(.name=="oauth-app-secret").value' <<< "$GRAPHQL_RESPONSE")
+          ca_bundle=$(jq -r '.data.managementEndpointMutation.attachSelfManagedManagementEndpointCollector.deploymentProperties[] | select(.name=="caBundle").value' <<< "$GRAPHQL_RESPONSE")
+          # bosh_director_certificate="$(yq eval '.properties-configuration.security_configuration.trusted_certificates' /tmp/director.yml)"
+          # hub_ca_certificate="$(echo -e "$bosh_director_certificate" | sed 's/^/      /')"
+
+
+          echo "Extracted collector_id: $collector_id"
+          echo "Extracted (unused) access_key: $access_key"
+          echo "Extracted oauth_client_id: $oauth_client_id"
+          echo "Extracted oauth_client_secret: $oauth_client_secret"
+          echo "Extracted foundation_id: $foundation_id"
+          echo "Extracted csp_org_id: $csp_org_id"
+          echo "Extracted ingestion_url: $ingestion_url"
+          echo "Extracted frpc_remote_port: $frpc_remote_port"
+          echo "Extracted ca_bundle: $ca_bundle"
+
+          # Validate required variables
+          echo "Validating required variables..."
+          MISSING_VARS=()
+
+          if [ -z "$collector_id" ] || [ "$collector_id" = "null" ]; then
+              MISSING_VARS+=("collector_id")
+          fi
+
+          if [ -z "$oauth_client_id" ] || [ "$oauth_client_id" = "null" ]; then
+              MISSING_VARS+=("oauth_client_id")
+          fi
+
+          if [ -z "$oauth_client_secret" ] || [ "$oauth_client_secret" = "null" ]; then
+              MISSING_VARS+=("oauth_client_secret")
+          fi
+
+          if [ -z "$foundation_id" ] || [ "$foundation_id" = "null" ]; then
+              MISSING_VARS+=("foundation_id")
+          fi
+
+          if [ -z "$csp_org_id" ] || [ "$csp_org_id" = "null" ]; then
+              MISSING_VARS+=("csp_org_id")
+          fi
+
+          if [ -z "$ingestion_url" ] || [ "$ingestion_url" = "null" ]; then
+              MISSING_VARS+=("ingestion_url")
+          fi
+
+          if [ -z "$frpc_remote_port" ] || [ "$frpc_remote_port" = "null" ]; then
+              MISSING_VARS+=("frpc_remote_port")
+          fi
+
+          if [ ${#MISSING_VARS[@]} -ne 0 ]; then
+              echo "Error: The following required variables are empty or null:"
+              printf '%s\n' "${MISSING_VARS[@]}"
+              echo "GraphQL Response: $GRAPHQL_RESPONSE"
+              exit 1
+          fi
+
+          echo "All required variables validated successfully."
+
+
+          # Create the YAML file using a heredoc
+
+          cat > "$VARS_FILE" <<EOF
+          ---
+            collector_id: ${collector_id}
+            access_key: ${access_key}
+            foundation_id: ${foundation_id}
+            csp_org_id: ${csp_org_id}
+            ingestion_url: ${ingestion_url}
+            opsman_uaa_admin_username: "${HUB_CLIENT_NAME:platform-services-client}"
+            opsman_uaa_admin_password: "${HUB_CLIENT_PASSWORD:platform-services-client}"
+            frpc_remote_port: ${frpc_remote_port}
+            oauth_client_id: ${oauth_client_id}
+            oauth_client_secret: ${oauth_client_secret}
+            hub_ca_certificate: |-
+              ${ca_bundle}
+          EOF
+          echo "YAML configuration file created at: $VARS_FILE"
+          cat $VARS_FILE         
+
+  - task: configure-product
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/configure-product.yml
+    params:
+      CONFIG_FILE: body
+      ENV_FILE: body
+      VARS_FILES: vars/platform-services-collector-vars.yml
+    input_mapping:
+      config: config-hub-collector
+      env: env
+      vars: vars
 
   - task: cleanup
     image: platform-automation-vsphere-image
@@ -1077,7 +1281,7 @@ jobs:
 - name: add-hub-collector-clients
   plan:
   - get: env
-    passed: [ apply-changes-phase-two ]
+    passed: [ apply-changes-director ]
     trigger: true
   - get: platform-automation-custom-image
     #params:
@@ -1121,52 +1325,51 @@ jobs:
           fi
           echo "listing OpsMan UAA Clients to verify"
           uaac clients | grep -A 5 -B 5 "$HUB_CLIENT_NAME" || echo "[WARN] Client not found in Opsman UAA listing"
+  # - task: add-director-hub-collector
+  #   image: platform-automation-custom-image
+  #   config:
+  #     platform: linux
+  #     inputs:
+  #     - name: env
+  #     params:
+  #       HUB_CLIENT_NAME: ((hub_client_name))
+  #       HUB_CLIENT_PASSWORD: ((hub_client_password))
+  #       ENV_FILE: body
+  #     run:
+  #       path: bash
+  #       args:
+  #       - -c
+  #       - |
+  #         set -eu
+  #         /usr/bin/gem install cf-uaac --no-document
+  #         # Set PATH to include gem bindir
+  #         export PATH="$(/usr/bin/gem environment gemdir)/bin:$PATH"
+  #         OPSMAN_URL=$(yq '.target' env/"${ENV_FILE}")
+  #         OPSMAN_USER=$(yq '.username' env/"${ENV_FILE}")
+  #         OPSMAN_PASS=$(yq '.password' env/"${ENV_FILE}")
+  #         # get BOSH creds from opsman via curl
+  #         BOSH_CREDS=$(om --env env/"${ENV_FILE}" curl --silent --path /api/v0/deployed/director/credentials/bosh_commandline_credentials  | jq -r '.credential')
+  #         UAA_CLIENT_ID=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CLIENT=[^ ]*' | cut -d'=' -f2)
+  #         # Parse BOSH_CLIENT_SECRET
+  #         UAA_CLIENT_SECRET=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CLIENT_SECRET=[^ ]*' | cut -d'=' -f2)
+  #         # Parse BOSH_ENVIRONMENT (Director IP)
+  #         BOSH_DIRECTOR_IP=$(echo "$BOSH_CREDS" | grep -o 'BOSH_ENVIRONMENT=[^ ]*' | cut -d'=' -f2)
+  #         echo "BOSH Director IP: $BOSH_DIRECTOR_IP"
+  #         # set uaac target to bosh director:8443 --skip-ssl-validation
+  #         uaac target $BOSH_DIRECTOR_IP:8443 --skip-ssl-validation
+  #         uaac token client get $UAA_CLIENT_ID --secret $UAA_CLIENT_SECRET
 
-  - task: add-director-hub-collector
-    image: platform-automation-custom-image
-    config:
-      platform: linux
-      inputs:
-      - name: env
-      params:
-        HUB_CLIENT_NAME: ((hub_client_name))
-        HUB_CLIENT_PASSWORD: ((hub_client_password))
-        ENV_FILE: body
-      run:
-        path: bash
-        args:
-        - -c
-        - |
-          set -eu
-          /usr/bin/gem install cf-uaac --no-document
-          # Set PATH to include gem bindir
-          export PATH="$(/usr/bin/gem environment gemdir)/bin:$PATH"
-          OPSMAN_URL=$(yq '.target' env/"${ENV_FILE}")
-          OPSMAN_USER=$(yq '.username' env/"${ENV_FILE}")
-          OPSMAN_PASS=$(yq '.password' env/"${ENV_FILE}")
-          # get BOSH creds from opsman via curl
-          BOSH_CREDS=$(om --env env/"${ENV_FILE}" curl --silent --path /api/v0/deployed/director/credentials/bosh_commandline_credentials  | jq -r '.credential')
-          UAA_CLIENT_ID=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CLIENT=[^ ]*' | cut -d'=' -f2)
-          # Parse BOSH_CLIENT_SECRET
-          UAA_CLIENT_SECRET=$(echo "$BOSH_CREDS" | grep -o 'BOSH_CLIENT_SECRET=[^ ]*' | cut -d'=' -f2)
-          # Parse BOSH_ENVIRONMENT (Director IP)
-          BOSH_DIRECTOR_IP=$(echo "$BOSH_CREDS" | grep -o 'BOSH_ENVIRONMENT=[^ ]*' | cut -d'=' -f2)
-          echo "BOSH Director IP: $BOSH_DIRECTOR_IP"
-          # set uaac target to bosh director:8443 --skip-ssl-validation
-          uaac target $BOSH_DIRECTOR_IP:8443 --skip-ssl-validation
-          uaac token client get $UAA_CLIENT_ID --secret $UAA_CLIENT_SECRET
-
-          # check for client, create if it doesn't exists.
-          client_exists=$(uaac clients | grep $HUB_CLIENT_NAME || true)
-          if [ -n "$client_exists" ]; then
-            echo "Client $HUB_CLIENT_NAME already exists.  Updating secret"
-            uaac secret set "$HUB_CLIENT_NAME" -s "$HUB_CLIENT_PASSWORD"
-          else
-            echo "Creating new client $HUB_CLIENT_NAME"
-            uaac client add $HUB_CLIENT_NAME --secret "$HUB_CLIENT_PASSWORD" --authorized_grant_types client_credentials,refresh_token --authorities bosh.read --scope bosh.read
-          fi
-          echo "listing BOSH Director UAA Clients to verify"
-          uaac clients | grep -A 5 -B 5 "$HUB_CLIENT_NAME" || echo "[WARN] Client not found in BOSH UAA listing"
+  #         # check for client, create if it doesn't exists.
+  #         client_exists=$(uaac clients | grep $HUB_CLIENT_NAME || true)
+  #         if [ -n "$client_exists" ]; then
+  #           echo "Client $HUB_CLIENT_NAME already exists.  Updating secret"
+  #           uaac secret set "$HUB_CLIENT_NAME" -s "$HUB_CLIENT_PASSWORD"
+  #         else
+  #           echo "Creating new client $HUB_CLIENT_NAME"
+  #           uaac client add $HUB_CLIENT_NAME --secret "$HUB_CLIENT_PASSWORD" --authorized_grant_types client_credentials,refresh_token --authorities bosh.read --scope bosh.read
+  #         fi
+  #         echo "listing BOSH Director UAA Clients to verify"
+  #         uaac clients | grep -A 5 -B 5 "$HUB_CLIENT_NAME" || echo "[WARN] Client not found in BOSH UAA listing"
 
 - name: opsman-tasks
   serial: true
@@ -1175,7 +1378,7 @@ jobs:
     builds: 2
   plan:
   - get: env
-    passed: [ apply-changes-phase-two ]
+    passed: [ apply-changes-director ]
     trigger: true
   - get: opsman-ssh-key
   - get: fixhub-script
