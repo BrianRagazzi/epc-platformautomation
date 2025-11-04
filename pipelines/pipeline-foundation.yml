@@ -1097,11 +1097,7 @@ jobs:
             oauth_client_id: ${oauth_client_id}
             oauth_client_secret: ${oauth_client_secret}
             hub_ca_cert: |
-            $(
-              while read -r LINE; do
-                printf '  %s\n' "$LINE"
-              done <<< "$ca_bundle"
-            )
+              $(echo "$ca_bundle" | sed 's/^/  /')
           EOF
 
           cat $VARS_FILE         
