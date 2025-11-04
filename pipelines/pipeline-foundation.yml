@@ -231,9 +231,6 @@ groups:
   - opsman-tasks
   - free-space-on-worker-vm-phase-one
   - free-space-on-worker-vm-phase-two
-- name: update-cf-hub-integration
-  jobs:
-  - update-cf-following-hub-tas-collector
   - update-cf-hub-integration
   - apply-changes-cf-hub-collector
 - name: teardown
@@ -1426,31 +1423,31 @@ jobs:
           command="wget -O ~/$scriptname $FIXHUB_SCRIPT_URL && chmod +x ~/$scriptname"
           ssh -i "$OPSMAN_SSH_KEY" -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null ubuntu@"$OPSMAN_HOSTNAME" "$command"
 
-- name: update-cf-following-hub-tas-collector
-  plan:
-  - get: platform-automation-vsphere-image
-    params:
-      unpack: true
-  - get: env
-    #passed: [ apply-changes-phase-one ]
-  - task: validate-config
-    image: platform-automation-vsphere-image
-    config:
-      platform: linux
-      inputs:
-      - name: env
-      run:
-        path: sh
-        args:
-        - -exc
-        - |
-          echo "Starting update of cf for Hub TAS Collector"
+# - name: update-cf-following-hub-tas-collector
+#   plan:
+#   - get: platform-automation-vsphere-image
+#     params:
+#       unpack: true
+#   - get: env
+#     #passed: [ apply-changes-phase-one ]
+#   - task: validate-config
+#     image: platform-automation-vsphere-image
+#     config:
+#       platform: linux
+#       inputs:
+#       - name: env
+#       run:
+#         path: sh
+#         args:
+#         - -exc
+#         - |
+#           echo "Starting update of cf for Hub TAS Collector"
 
 - name: update-cf-hub-integration
   plan:
   - get: env
     trigger: true
-    passed: [ update-cf-following-hub-tas-collector ]
+    passed: [ apply-changes-phase-two ]
   - get: platform-automation-vsphere-image
     params:
       unpack: true
