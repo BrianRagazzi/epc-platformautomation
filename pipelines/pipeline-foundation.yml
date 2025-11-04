@@ -1098,7 +1098,7 @@ jobs:
             oauth_client_secret: ${oauth_client_secret}
           EOF
           echo "  hub_ca_cert: |" >> "$VARS_FILE"
-          sed 's/^/  /' vars/ca_bundle.pem >> "$VARS_FILE"
+          sed 's/^/    /' vars/ca_bundle.pem >> "$VARS_FILE"
           cat $VARS_FILE         
 
   - task: configure-product
