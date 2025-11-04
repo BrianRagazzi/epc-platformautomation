@@ -1037,7 +1037,7 @@ jobs:
           ca_bundle=$(jq -r '.data.managementEndpointMutation.attachSelfManagedManagementEndpointCollector.deploymentProperties[] | select(.name=="caBundle").value' <<< "$GRAPHQL_RESPONSE")
           # bosh_director_certificate="$(yq eval '.properties-configuration.security_configuration.trusted_certificates' /tmp/director.yml)"
           # hub_ca_certificate="$(echo -e "$bosh_director_certificate" | sed 's/^/      /')"
-          echo $ca_bundle > /tmp/ca_bundle.pem
+          echo $ca_bundle > vars/ca_bundle.pem
 
           echo "Extracted collector_id: $collector_id"
           echo "Extracted (unused) access_key: $access_key"
@@ -1096,12 +1096,9 @@ jobs:
             frpc_remote_port: ${frpc_remote_port}
             oauth_client_id: ${oauth_client_id}
             oauth_client_secret: ${oauth_client_secret}
-            hub_ca_cert: |
-            $(
-                tr -d '\r' <<< "$ca_bundle" | sed 's/^/  /'
-            )
           EOF
-
+          echo "  hub_ca_cert: |" >> "$VARS_FILE"
+          sed 's/^/  /' vars/ca_bundle.pem >> "$VARS_FILE"
           cat $VARS_FILE         
 
   - task: configure-product
