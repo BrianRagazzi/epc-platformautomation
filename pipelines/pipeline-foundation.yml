@@ -1096,11 +1096,10 @@ jobs:
             frpc_remote_port: ${frpc_remote_port}
             oauth_client_id: ${oauth_client_id}
             oauth_client_secret: ${oauth_client_secret}
+            hub_ca_cert: |
+              $(echo "$ca_bundle" | sed 's/^/  /')
           EOF
 
-          echo hub_ca_certificate: | >> $VARS_FILE
-          sed 's/^/  /' /tmp/ca_bundle.pem >> $VARS_FILE 
-          echo "YAML configuration file created at: $VARS_FILE"
           cat $VARS_FILE         
 
   - task: configure-product
