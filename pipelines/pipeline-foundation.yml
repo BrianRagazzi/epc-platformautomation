@@ -119,19 +119,19 @@ resources:
     bucket: ((s3_bucket_tiles))
     regexp: srt-(.*).pivotal
 
-- name: genai-product
-  type: s3
-  source:
-    <<: *s3_credentials
-    bucket: ((s3_bucket_tiles))
-    regexp: genai-(.*).pivotal
+# - name: genai-product
+#   type: s3
+#   source:
+#     <<: *s3_credentials
+#     bucket: ((s3_bucket_tiles))
+#     regexp: genai-(.*).pivotal
 
-- name: postgres-product
-  type: s3
-  source:
-    <<: *s3_credentials
-    bucket: ((s3_bucket_tiles))
-    regexp: postgres-(.*).pivotal
+# - name: postgres-product
+#   type: s3
+#   source:
+#     <<: *s3_credentials
+#     bucket: ((s3_bucket_tiles))
+#     regexp: postgres-(.*).pivotal
 
 # - name: hub-product
 #   type: s3
@@ -178,15 +178,15 @@ resources:
   source:
     url: ((http_config_director_auth))
 
-- name: config-genai
-  <<: *http_resource
-  source:
-    url: ((http_config_genai))
+# - name: config-genai
+#   <<: *http_resource
+#   source:
+#     url: ((http_config_genai))
 
-- name: config-postgres
-  <<: *http_resource
-  source:
-    url: ((http_config_postgres))
+# - name: config-postgres
+#   <<: *http_resource
+#   source:
+#     url: ((http_config_postgres))
 
 - name: config-srt
   <<: *http_resource
@@ -520,7 +520,7 @@ jobs:
 - name: free-space-on-worker-vm-phase-one
   plan:
   - get: env
-    passed: [ cf-small-footprint, postgres ]
+    passed: [ cf-small-footprint ] #[ cf-small-footprint, postgres ]
     trigger: true
   - get: platform-automation-custom-image
     #params:
@@ -1141,7 +1141,7 @@ jobs:
 - name: free-space-on-worker-vm-phase-two
   plan:
   - get: env
-    passed: [ genai, hub-collector ]
+    passed: [ hub-collector ] #[ genai, hub-collector ]
     trigger: true
   - get: platform-automation-custom-image
     #params:
