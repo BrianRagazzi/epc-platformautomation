@@ -693,7 +693,7 @@ jobs:
     params:
       CONFIG_FILE: body
       ENV_FILE: body
-      VARS_FILES: body
+      VARS_FILES: vars/body
     input_mapping:
       config: config-srt
       env: env
