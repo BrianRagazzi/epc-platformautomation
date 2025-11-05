@@ -260,6 +260,7 @@ groups:
 
 jobs:
 - name: ear-small-footprint
+  serial_groups: [ apply-changes ]
   build_log_retention:
     builds: 2
   plan:
@@ -518,6 +519,7 @@ jobs:
 
 - name: postgres
   serial: false
+  serial_groups: [ apply-changes ]
   build_log_retention:
     builds: 1
   plan:
@@ -708,7 +710,7 @@ jobs:
 
 - name: genai
   serial: false
-  #serial_groups: [ phase_two ]
+  serial_groups: [ apply-changes ]
   build_log_retention:
     builds: 1
   plan:
@@ -897,7 +899,7 @@ jobs:
       SELECTIVE_DEPLOY_PRODUCTS: "cf,genai"
 
 - name: platform-services
-  serial_groups: [ phase_two ]
+  serial_groups: [ apply-changes ]
   build_log_retention:
     builds: 1
   plan:
@@ -1076,7 +1078,7 @@ jobs:
 
 - name: cnb
   serial: false
-  serial_groups: [ phase_two ]
+  serial_groups: [ apply-changes ]
   build_log_retention:
     builds: 1
   plan:
