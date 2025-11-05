@@ -200,6 +200,11 @@ resources:
   source:
     url: ((http_config_srt))
 
+- name: errands-srt
+  <<: *http_resource
+  source:
+    url: ((http_errands_srt))
+
 # - name: config-hub
 #   <<: *http_resource
 #   source:
