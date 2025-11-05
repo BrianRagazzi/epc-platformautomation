@@ -1323,7 +1323,7 @@ jobs:
   - task: apply-changes-phase-two
     image: platform-automation-vsphere-image
     file: platform-automation-tasks/tasks/apply-changes.yml
-    attempts: 4
+    attempts: 2
     input_mapping:
       env: env
     params:
