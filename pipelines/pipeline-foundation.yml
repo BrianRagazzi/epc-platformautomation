@@ -140,7 +140,7 @@ resources:
 #     bucket: ((s3_bucket_tiles))
 #     regexp: tanzu-hub-(\d.*).pivotal
 
-- name: hub-collector-product
+- name: platform-services-product
   type: s3
   source:
     <<: *s3_credentials
@@ -205,7 +205,7 @@ resources:
 #   source:
 #     url: ((http_config_hub))
 
-- name: config-hub-collector
+- name: config-platform-services
   <<: *http_resource
   source:
     url: ((http_config_hub_collector))
@@ -236,15 +236,16 @@ groups:
   - apply-changes-phase-one
   - post-install-tasks-cf
   - genai
+  - cnb
   #- hub
-  - hub-collector
+  - platform-services
   - apply-changes-phase-two
-  - add-hub-collector-clients
+  - add-platform-services-clients
   - opsman-tasks
   - free-space-on-worker-vm-phase-one
   - free-space-on-worker-vm-phase-two
   - update-cf-hub-integration
-  - apply-changes-cf-hub-collector
+  - apply-changes-cf-platform-services
 - name: teardown
   jobs:
   - destroy-installation
@@ -956,7 +957,7 @@ jobs:
 #           rm -rf hub-product/*
 #           rm -rf stemcell/*
 
-- name: hub-collector
+- name: platform-services
   serial_groups: [ phase_two ]
   build_log_retention:
     builds: 1
@@ -964,8 +965,8 @@ jobs:
   - get: env
     passed: [ apply-changes-phase-one ]
     trigger: true
-  - get: config-hub-collector
-  - get: hub-collector-product
+  - get: config-platform-services
+  - get: platform-services-product
   - get: stemcell
   - get: platform-automation-custom-image
   - get: platform-automation-vsphere-image
@@ -978,14 +979,14 @@ jobs:
   - task: upload-product
     <<: *upload_task
     input_mapping:
-      product: hub-collector-product
-      config: config-hub-collector
+      product: platform-services-product
+      config: config-platform-services
       env: env
 
   - task: stage-product
     <<: *stage_task
     input_mapping:
-      product: hub-collector-product
+      product: platform-services-product
       env: env
 
   - task: get-attachment-settings
@@ -1172,7 +1173,7 @@ jobs:
       ENV_FILE: body
       VARS_FILES: vars/platform-services-collector-vars.yml
     input_mapping:
-      config: config-hub-collector
+      config: config-platform-services
       env: env
       vars: vars
 
@@ -1181,18 +1182,18 @@ jobs:
     config:
       platform: linux
       inputs:
-      - name: hub-collector-product
+      - name: platform-services-product
       run:
         path: sh
         args:
         - -exc
         - |
-          rm -rf hub-collector-product/*
+          rm -rf platform-services-product/*
 
 - name: free-space-on-worker-vm-phase-two
   plan:
   - get: env
-    passed: [ hub-collector ] #[ genai, hub-collector ]
+    passed: [ platform-services ] #[ genai, platform-services ]
     trigger: true
   - get: platform-automation-custom-image
     #params:
@@ -1329,7 +1330,7 @@ jobs:
       ENV_FILE: body
       SELECTIVE_DEPLOY_PRODUCTS: "hub-tas-collector, genai"
 
-- name: add-hub-collector-clients
+- name: add-platform-services-clients
   plan:
   - get: env
     passed: [ apply-changes-director ]
@@ -1337,7 +1338,7 @@ jobs:
   - get: platform-automation-custom-image
     #params:
     #  unpack: true
-  - task: add-opsman-hub-collector #repeat for Director
+  - task: add-opsman-platform-services #repeat for Director
     image: platform-automation-custom-image
     config:
       platform: linux
@@ -1376,7 +1377,7 @@ jobs:
           fi
           echo "listing OpsMan UAA Clients to verify"
           uaac clients | grep -A 5 -B 5 "$HUB_CLIENT_NAME" || echo "[WARN] Client not found in Opsman UAA listing"
-  # - task: add-director-hub-collector
+  # - task: add-director-platform-services
   #   image: platform-automation-custom-image
   #   config:
   #     platform: linux
@@ -1537,7 +1538,7 @@ jobs:
           # Updating config for cf/srt
           om --env env/"${ENV_FILE}" configure-product -c config-srt-otel-template/body -l $filename
 
-- name: apply-changes-cf-hub-collector
+- name: apply-changes-cf-platform-services
   serial: true
   build_log_retention:
     builds: 1
