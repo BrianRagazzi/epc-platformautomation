@@ -1328,7 +1328,7 @@ jobs:
       env: env
     params:
       ENV_FILE: body
-      SELECTIVE_DEPLOY_PRODUCTS: "hub-tas-collector, genai, cloud-native-buildpacks-tile"
+      SELECTIVE_DEPLOY_PRODUCTS: "cf, hub-tas-collector, genai, cloud-native-buildpacks-tile"
 
 - name: add-platform-services-clients
   plan:
