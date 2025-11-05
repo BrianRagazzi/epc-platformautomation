@@ -152,7 +152,7 @@ resources:
   source:
     <<: *s3_credentials
     bucket: ((s3_bucket_tiles))
-    regexp: cloud-native-buildpacks-tile-(\d.*).pivotal #hub-tas-collector-(\d.*).pivotal
+    regexp: cloud-native-buildpacks-tile-(\d.*).pivotal
 
 # HTTP Resources
 - name: env
@@ -1328,7 +1328,7 @@ jobs:
       env: env
     params:
       ENV_FILE: body
-      SELECTIVE_DEPLOY_PRODUCTS: "hub-tas-collector, genai"
+      SELECTIVE_DEPLOY_PRODUCTS: "hub-tas-collector, genai, cloud-native-buildpacks-tile"
 
 - name: add-platform-services-clients
   plan:

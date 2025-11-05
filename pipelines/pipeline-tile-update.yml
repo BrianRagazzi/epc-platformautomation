@@ -140,12 +140,19 @@ resources:
 #     bucket: ((s3_bucket_tiles))
 #     regexp: tanzu-hub-(\d.*).pivotal
 
-- name: hub-collector-product
+- name: platform-services-product
   type: s3
   source:
     <<: *s3_credentials
     bucket: ((s3_bucket_tiles))
     regexp: hub-tas-collector-(\d.*).pivotal
+
+- name: cloud-native-buildpacks-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: ((s3_bucket_tiles))
+    regexp: cloud-native-buildpacks-tile-(\d.*).pivotal
 
 # HTTP Resources
 - name: env
@@ -198,10 +205,15 @@ resources:
 #   source:
 #     url: ((http_config_hub))
 
-- name: config-hub-collector
+- name: config-platform-services
   <<: *http_resource
   source:
     url: ((http_config_hub_collector))
+
+- name: config-cnb
+  <<: *http_resource
+  source:
+    url: ((http_config_cnb))
 
 # - name: config-srt-otel-template
 #   <<: *http_resource
@@ -229,11 +241,16 @@ groups:
   - genai
   - free-space-on-concourse-genai
   - apply-changes-genai
-- name: hub-collector
+- name: platform-services
   jobs:
-  - hub-collector
-  - free-space-on-concourse-hub-collector
-  - apply-changes-hub-collector
+  - platform-services
+  - free-space-on-concourse-platform-services
+  - apply-changes-platform-services
+- name: cloud-native-buildpacks
+  jobs:
+  - cnb
+  - free-space-on-concourse-cnb
+  - apply-changes-cnb
 
 jobs:
 - name: cf-small-footprint
@@ -848,14 +865,14 @@ jobs:
       ENV_FILE: body
       SELECTIVE_DEPLOY_PRODUCTS: "cf,genai"
 
-- name: hub-collector
+- name: platform-services
   serial_groups: [ phase_two ]
   build_log_retention:
     builds: 1
   plan:
   - get: env
-  - get: config-hub-collector
-  - get: hub-collector-product
+  - get: config-platform-services
+  - get: platform-services-product
     trigger: true
   - get: stemcell
   - get: platform-automation-vsphere-image
@@ -868,8 +885,8 @@ jobs:
   - task: upload-product
     <<: *upload_task
     input_mapping:
-      product: hub-collector-product
-      config: config-hub-collector
+      product: platform-services-product
+      config: config-platform-services
       env: env
 
   - task: cleanup
@@ -877,18 +894,18 @@ jobs:
     config:
       platform: linux
       inputs:
-      - name: hub-collector-product
+      - name: platform-services-product
       run:
         path: sh
         args:
         - -exc
         - |
-          rm -rf hub-collector-product/*
+          rm -rf platform-services-product/*
 
-- name: free-space-on-concourse-hub-collector
+- name: free-space-on-concourse-platform-services
   plan:
   - get: env
-    passed: [ hub-collector ]
+    passed: [ platform-services ]
     trigger: true
   - get: platform-automation-custom-image
     #params:
@@ -998,14 +1015,14 @@ jobs:
           remote_command="find /opt/concourse/worker/volumes -name '*pivotal*' -type f -delete 2>/dev/null || true"
           sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$remote_command"
 
-- name: apply-changes-hub-collector
+- name: apply-changes-platform-services
   serial: true
   serial_groups: [ apply-changes ]
   build_log_retention:
     builds: 1
   plan:
   - get: env
-    passed: [ free-space-on-concourse-hub-collector ]
+    passed: [ free-space-on-concourse-platform-services ]
     trigger: true
   - get: platform-automation-vsphere-image
     params:
@@ -1025,3 +1042,194 @@ jobs:
     params:
       ENV_FILE: body
       SELECTIVE_DEPLOY_PRODUCTS: "cf,hub-tas-collector"
+
+- name: cnb
+  serial: false
+  serial_groups: [ phase_two ]
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: cloud-native-buildpacks-product
+  - get: config-cnb
+  - get: env
+    passed: [ apply-changes-phase-one ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: cloud-native-buildpacks-product
+      config: config-cnb
+      env: env
+
+  - task: stage-product
+    <<: *stage_task
+    input_mapping:
+      product: cloud-native-buildpacks-product
+      env: env
+
+  - task: configure-product
+    <<: *configure_task
+    input_mapping:
+      config: config-cnb
+      env: env
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: cloud-native-buildpacks-product
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf cloud-native-buildpacks-product/*
+
+- name: free-space-on-concourse-cnb
+  plan:
+  - get: env
+    passed: [ cnb ]
+    trigger: true
+  - get: platform-automation-custom-image
+    #params:
+    #  unpack: true
+  - task: clear-resource-cache
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      params:
+        CONCOURSE: ((concourse_url))
+        CONCOURSE_USER: "admin"
+        CONCOURSE_PASS: ((s3_secret_access_key))
+        CONCOURSE_TARGET: "ci"
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          #!/bin/bash
+          # Clears cache for resources ending with 'product' that have 'succeeded' status
+
+          echo "Starting Concourse resource cache cleanup..."
+          # Check if fly CLI exists, if not download it
+          if ! command -v fly &> /dev/null; then
+              echo "fly CLI not found, downloading from Concourse..."
+              curl "$CONCOURSE/api/v1/cli?arch=amd64&platform=linux" -o fly
+              if [ $? -ne 0 ]; then
+                  echo "Error: Failed to download fly CLI"
+                  exit 1
+              fi
+              chmod +x fly
+              echo "fly CLI downloaded successfully"
+              FLY_CMD="./fly"
+          else
+              echo "fly CLI found in PATH"
+              FLY_CMD="fly"
+          fi
+          # Step 1: Login to Concourse
+          echo "Logging in to Concourse at $CONCOURSE..."
+          $FLY_CMD -t "$CONCOURSE_TARGET" login -c "$CONCOURSE" -u "$CONCOURSE_USER" -p "$CONCOURSE_PASS"
+          if [ $? -ne 0 ]; then
+              echo "Error: Failed to login to Concourse"
+              exit 1
+          fi
+          echo "Login successful!"
+          # Step 2: Get all pipelines
+          echo "Enumerating pipelines..."
+          pipelines=$($FLY_CMD -t "$CONCOURSE_TARGET" pipelines --json | jq -r '.[].name')
+          if [ -z "$pipelines" ]; then
+              echo "No pipelines found"
+              exit 0
+          fi
+          echo "Found pipelines: $pipelines"
+          # Step 3 & 4: For each pipeline, get resources and clear cache for matching ones
+          for pipeline in $pipelines; do
+              echo ""
+              echo "Processing pipeline: $pipeline"
+              # Get resources for this pipeline
+              resources=$($FLY_CMD -t "$CONCOURSE_TARGET" resources -p "$pipeline" --json)
+              if [ $? -ne 0 ]; then
+                  echo "Warning: Could not get resources for pipeline $pipeline, skipping..."
+                  continue
+              fi
+              # Filter resources that end with 'product' and have 'succeeded' status
+              matching_resources=$(echo "$resources" | jq -r '.[] | select(.name | endswith("product")) | select(.build.status == "succeeded") | .name')
+              if [ -z "$matching_resources" ]; then
+                  echo "  No matching resources found in pipeline $pipeline"
+                  continue
+              fi
+              echo "  Found matching resources in $pipeline:"
+              for resource in $matching_resources; do
+                  echo "    - $resource"
+              done
+              # Clear cache for each matching resource
+              for resource in $matching_resources; do
+                  echo "  Clearing cache for $pipeline/$resource..."
+                  echo "y" | $FLY_CMD -t "$CONCOURSE_TARGET" clear-resource-cache -r "$pipeline/$resource"
+                  if [ $? -eq 0 ]; then
+                      echo "    ✓ Successfully cleared cache for $pipeline/$resource"
+                  else
+                      echo "    ✗ Failed to clear cache for $pipeline/$resource"
+                  fi
+              done
+          done
+          echo "Cache cleanup completed!"
+
+  - task: delete-pivotal-files-from-worker
+    image: platform-automation-custom-image
+    config:
+      platform: linux
+      params:
+        DOCKER_HOST: ((docker_host))
+        WORKER_NAME: concourse-worker-1
+        DOCKER_PASS: ((s3_secret_access_key))
+        CONCOURSE: ((concourse_url))
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -eu
+          echo "Connecting to $DOCKER_HOST to delete pivotal files from worker $WORKER_NAME"
+          # Quote the pattern to avoid local glob expansion. Redirect remote stderr so permission
+          # denied messages don't cause the local script to fail. Use '|| true' so ssh returns 0
+          # even if find had non-fatal problems deleting some files.
+          remote_command="find /opt/concourse/worker/volumes -name '*pivotal*' -type f -delete 2>/dev/null || true"
+          sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$remote_command"
+
+- name: apply-changes-cnb
+  serial: true
+  serial_groups: [ apply-changes ]
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: env
+    passed: [ free-space-on-concourse-platform-services ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-custom-image
+    #params:
+    #  unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: apply-product-changes
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/apply-changes.yml
+    input_mapping:
+      env: env
+    params:
+      ENV_FILE: body
+      SELECTIVE_DEPLOY_PRODUCTS: "cf,cloud-native-buildpacks-tile"
