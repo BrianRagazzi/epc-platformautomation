@@ -679,7 +679,7 @@ jobs:
     trigger: true
   - get: platform-automation-custom-image
   - get: platform-automation-vsphere-image
-  - get: config-srt
+  # - get: config-srt
   - get: errands-srt
   - get: platform-automation-tasks
     params:
@@ -693,9 +693,9 @@ jobs:
     params:
       CONFIG_FILE: body
       ENV_FILE: body
-      VARS_FILES: vars/body
+      VARS_FILES:
     input_mapping:
-      config: config-srt
+      config: errands-srt #config-srt
       env: env
       vars: errands-srt
 
