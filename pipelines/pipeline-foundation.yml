@@ -679,6 +679,7 @@ jobs:
     trigger: true
   - get: platform-automation-custom-image
   - get: platform-automation-vsphere-image
+  - get: config-srt
   - get: errands-srt
   - get: platform-automation-tasks
     params:
