@@ -231,9 +231,9 @@ resources:
 #     url: ((http_config_fixhub_script))
 
 groups:
-- name: cf-small-footprint
+- name: ear-small-footprint
   jobs:
-  - cf-small-footprint
+  - ear-small-footprint
   - free-space-on-concourse-cf
   - apply-changes-cf
   - update-errands-cf
@@ -259,7 +259,7 @@ groups:
   - apply-changes-cnb
 
 jobs:
-- name: cf-small-footprint
+- name: ear-small-footprint
   build_log_retention:
     builds: 2
   plan:
@@ -350,10 +350,10 @@ jobs:
           rm -rf srt-product/*
           rm -rf stemcell/*
 
-- name: free-space-on-concourse-cf
+- name: free-space-on-concourse-ear
   plan:
   - get: env
-    passed: [ cf-small-footprint ]
+    passed: [ ear-small-footprint ]
     trigger: true
   - get: platform-automation-custom-image
     #params:
@@ -463,14 +463,14 @@ jobs:
           remote_command="find /opt/concourse/worker/volumes -name '*pivotal*' -type f -delete 2>/dev/null || true"
           sshpass -p "$DOCKER_PASS" ssh -o StrictHostKeyChecking=no "ubuntu@$DOCKER_HOST" "$remote_command"
 
-- name: apply-changes-cf
+- name: apply-changes-ear
   serial: true
   serial_groups: [ apply-changes ]
   build_log_retention:
     builds: 1
   plan:
   - get: env
-    passed: [ free-space-on-concourse-cf ]
+    passed: [ free-space-on-concourse-ear ]
     trigger: true
   - get: platform-automation-vsphere-image
     params:
@@ -491,13 +491,13 @@ jobs:
       ENV_FILE: body
       SELECTIVE_DEPLOY_PRODUCTS: "cf"
 
-- name: update-errands-cf
+- name: update-errands-ear
   serial: true
   build_log_retention:
     builds: 1
   plan:
   - get: env
-    passed: [ apply-changes-cf ]
+    passed: [ apply-changes-ear ]
     trigger: true
   - get: platform-automation-vsphere-image
   - get: errands-srt
