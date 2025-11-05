@@ -147,6 +147,13 @@ resources:
     bucket: ((s3_bucket_tiles))
     regexp: platform-services-(\d.*).pivotal #hub-tas-collector-(\d.*).pivotal
 
+- name: cloud-native-buildpacks-product
+  type: s3
+  source:
+    <<: *s3_credentials
+    bucket: ((s3_bucket_tiles))
+    regexp: cloud-native-buildpacks-tile-(\d.*).pivotal #hub-tas-collector-(\d.*).pivotal
+
 # HTTP Resources
 - name: env
   <<: *http_resource
@@ -207,6 +214,11 @@ resources:
   <<: *http_resource
   source:
     url: ((http_config_srt_otel_template))
+
+- name: config-cnb
+  <<: *http_resource
+  source:
+    url: ((http_config_cnb))
 
 - name: fixhub-script
   <<: *http_resource
@@ -382,7 +394,6 @@ jobs:
     trigger: true
   - get: config-srt
   - get: srt-product
-    trigger: true
   - get: stemcell
   - get: platform-automation-vsphere-image
     params:
@@ -790,10 +801,10 @@ jobs:
     builds: 1
   plan:
   - get: genai-product
-    trigger: true
   - get: config-genai
   - get: env
     passed: [ apply-changes-phase-one ]
+    trigger: true
   - get: platform-automation-vsphere-image
     params:
       unpack: true
@@ -832,6 +843,56 @@ jobs:
         - -exc
         - |
           rm -rf genai-product/*
+
+- name: cnb
+  serial: false
+  serial_groups: [ phase_two ]
+  build_log_retention:
+    builds: 1
+  plan:
+  - get: cloud-native-buildpacks-product
+  - get: config-cnb
+  - get: env
+    passed: [ apply-changes-phase-one ]
+    trigger: true
+  - get: platform-automation-vsphere-image
+    params:
+      unpack: true
+  - get: platform-automation-tasks
+    params:
+      unpack: true
+
+  - task: upload-product
+    <<: *upload_task
+    input_mapping:
+      product: cloud-native-buildpacks-product
+      config: config-cnb
+      env: env
+
+  - task: stage-product
+    <<: *stage_task
+    input_mapping:
+      product: cloud-native-buildpacks-product
+      env: env
+
+  - task: configure-product
+    <<: *configure_task
+    input_mapping:
+      config: config-cnb
+      env: env
+
+  - task: cleanup
+    image: platform-automation-vsphere-image
+    config:
+      platform: linux
+      inputs:
+      - name: cloud-native-buildpacks-product
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          rm -rf cloud-native-buildpacks-product/*
 
 # - name: hub
 #   serial_groups: [ phase_two ]
