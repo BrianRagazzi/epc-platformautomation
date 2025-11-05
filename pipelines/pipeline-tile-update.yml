@@ -1212,7 +1212,7 @@ jobs:
     builds: 1
   plan:
   - get: env
-    passed: [ free-space-on-concourse-platform-services ]
+    passed: [ free-space-on-concourse-cnb ]
     trigger: true
   - get: platform-automation-vsphere-image
     params:
