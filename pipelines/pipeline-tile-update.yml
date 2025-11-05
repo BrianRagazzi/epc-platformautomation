@@ -298,42 +298,42 @@ jobs:
     params:
       ENV_FILE: body
 
-  - task: create-certificate-vars
-    image: platform-automation-vsphere-image
-    config:
-      platform: linux
-      inputs:
-      - name: env
-      params:
-        DOMAINS: ((certificate_domains))
-        ENV_FILE: body
-      outputs:
-      - name: vars
-      run:
-        path: sh
-        args:
-        - -c
-        - |
-          echo "generating cert for ${DOMAINS}"
-          om --env env/body generate-certificate -d "${DOMAINS}" > /tmp/certificate.json
-          om interpolate -c /tmp/certificate.json --path /certificate > /tmp/wildcard-cert.pem
-          om interpolate -c /tmp/certificate.json --path /key > /tmp/wildcard-key.pem
-          echo "wildcard-cert-pem: |" > vars/certificate-vars.yml
-          sed 's/^/  /' /tmp/wildcard-cert.pem >> vars/certificate-vars.yml
-          echo "wildcard-key-pem: |" >> vars/certificate-vars.yml
-          sed 's/^/  /' /tmp/wildcard-key.pem >> vars/certificate-vars.yml
+  # - task: create-certificate-vars
+  #   image: platform-automation-vsphere-image
+  #   config:
+  #     platform: linux
+  #     inputs:
+  #     - name: env
+  #     params:
+  #       DOMAINS: ((certificate_domains))
+  #       ENV_FILE: body
+  #     outputs:
+  #     - name: vars
+  #     run:
+  #       path: sh
+  #       args:
+  #       - -c
+  #       - |
+  #         echo "generating cert for ${DOMAINS}"
+  #         om --env env/body generate-certificate -d "${DOMAINS}" > /tmp/certificate.json
+  #         om interpolate -c /tmp/certificate.json --path /certificate > /tmp/wildcard-cert.pem
+  #         om interpolate -c /tmp/certificate.json --path /key > /tmp/wildcard-key.pem
+  #         echo "wildcard-cert-pem: |" > vars/certificate-vars.yml
+  #         sed 's/^/  /' /tmp/wildcard-cert.pem >> vars/certificate-vars.yml
+  #         echo "wildcard-key-pem: |" >> vars/certificate-vars.yml
+  #         sed 's/^/  /' /tmp/wildcard-key.pem >> vars/certificate-vars.yml
 
-  - task: configure-product
-    image: platform-automation-vsphere-image
-    file: platform-automation-tasks/tasks/configure-product.yml
-    params:
-      CONFIG_FILE: body
-      ENV_FILE: body
-      VARS_FILES: vars/certificate-vars.yml
-    input_mapping:
-      config: config-srt
-      env: env
-      vars: vars
+  # - task: configure-product
+  #   image: platform-automation-vsphere-image
+  #   file: platform-automation-tasks/tasks/configure-product.yml
+  #   params:
+  #     CONFIG_FILE: body
+  #     ENV_FILE: body
+  #     VARS_FILES: vars/certificate-vars.yml
+  #   input_mapping:
+  #     config: config-srt
+  #     env: env
+  #     vars: vars
 
   - task: cleanup
     image: platform-automation-vsphere-image
@@ -545,12 +545,12 @@ jobs:
       product: postgres-product
       env: env
 
-  - task: configure-product
-    <<: *configure_task
-    input_mapping:
-      config: config-postgres
-      env: env
-      #vars: interpolated-creds
+  # - task: configure-product
+  #   <<: *configure_task
+  #   input_mapping:
+  #     config: config-postgres
+  #     env: env
+  #     #vars: interpolated-creds
 
   - task: cleanup
     image: platform-automation-vsphere-image
@@ -736,11 +736,11 @@ jobs:
       product: genai-product
       env: env
 
-  - task: configure-product
-    <<: *configure_task
-    input_mapping:
-      config: config-genai
-      env: env
+  # - task: configure-product
+  #   <<: *configure_task
+  #   input_mapping:
+  #     config: config-genai
+  #     env: env
 
   - task: cleanup
     image: platform-automation-vsphere-image
@@ -1104,11 +1104,11 @@ jobs:
       product: cloud-native-buildpacks-product
       env: env
 
-  - task: configure-product
-    <<: *configure_task
-    input_mapping:
-      config: config-cnb
-      env: env
+  # - task: configure-product
+  #   <<: *configure_task
+  #   input_mapping:
+  #     config: config-cnb
+  #     env: env
 
   - task: cleanup
     image: platform-automation-vsphere-image
