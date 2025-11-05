@@ -680,6 +680,9 @@ jobs:
   - get: platform-automation-custom-image
   - get: platform-automation-vsphere-image
   - get: errands-srt
+  - get: platform-automation-tasks
+    params:
+      unpack: true
     #params:
     #  unpack: true
 
