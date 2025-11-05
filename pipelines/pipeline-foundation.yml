@@ -200,6 +200,11 @@ resources:
   source:
     url: ((http_config_srt))
 
+- name: errands-srt
+  <<: *http_resource
+  source:
+    url: ((http_errands_srt))
+
 # - name: config-hub
 #   <<: *http_resource
 #   source:
@@ -673,8 +678,22 @@ jobs:
     passed: [ apply-changes-phase-one ]
     trigger: true
   - get: platform-automation-custom-image
+  - get: platform-automation-vsphere-image
+  - get: errands-srt
     #params:
     #  unpack: true
+
+  - task: configure-errands-srt
+    image: platform-automation-vsphere-image
+    file: platform-automation-tasks/tasks/configure-product.yml
+    params:
+      CONFIG_FILE: body
+      ENV_FILE: body
+      VARS_FILES: body
+    input_mapping:
+      config: config-srt
+      env: env
+      vars: errand-srt
 
   - task: add-ldap-users-to-new-org
     image: platform-automation-custom-image
