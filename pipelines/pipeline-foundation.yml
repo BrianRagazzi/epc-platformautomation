@@ -697,7 +697,7 @@ jobs:
     input_mapping:
       config: config-srt
       env: env
-      vars: errand-srt
+      vars: errands-srt
 
   - task: add-ldap-users-to-new-org
     image: platform-automation-custom-image
