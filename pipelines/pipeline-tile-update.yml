@@ -236,6 +236,7 @@ groups:
   - cf-small-footprint
   - free-space-on-concourse-cf
   - apply-changes-cf
+  - update-errands-cf
 - name: postgres
   jobs:
   - postgres
