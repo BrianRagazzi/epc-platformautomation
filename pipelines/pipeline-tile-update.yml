@@ -234,9 +234,9 @@ groups:
 - name: ear-small-footprint
   jobs:
   - ear-small-footprint
-  - free-space-on-concourse-cf
-  - apply-changes-cf
-  - update-errands-cf
+  - free-space-on-concourse-ear
+  - apply-changes-ear
+  - update-errands-ear
 - name: postgres
   jobs:
   - postgres
